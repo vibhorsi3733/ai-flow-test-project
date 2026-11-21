@@ -76,9 +76,21 @@ def package_stream(clips: list[dict], withheld: list[dict] = ()) -> list[dict]:
     return kept + covered
 
 
+def dedupe(events: list[dict], window: float) -> list[dict]:
+    """Drop repeats of the same source+type within `window` s (the fuser merges these too)."""
+    kept: list[dict] = []
+    for e in sorted(events, key=lambda e: e["t"]):
+        if not any(k["type"] == e["type"] and k.get("source") == e.get("source") and abs(k["t"] - e["t"]) < window
+                   for k in kept):
+            kept.append(e)
+    return kept
+
+
 def score_all(labels: list[dict], events: list[dict], clips: list[dict], tol: float,
-              withheld: list[dict] = ()) -> dict[str, dict[str, Score]]:
+              withheld: list[dict] = (), dedupe_s: float = 0.0) -> dict[str, dict[str, Score]]:
     out: dict[str, dict[str, Score]] = {}
+    if dedupe_s:
+        events = dedupe(events, dedupe_s)
     streams = {src: [e for e in events if e.get("source") == src] for src in SOURCES}
     streams["package"] = package_stream(clips, withheld)
     for name, evs in streams.items():
@@ -106,6 +118,8 @@ def main(argv: list[str] | None = None) -> dict:
     ap.add_argument("--events", default="runtime_1080/events.jsonl")
     ap.add_argument("--manifest", default=None, help="package manifest JSON (default: newest in output/)")
     ap.add_argument("--tol", type=float, default=8.0, help="seconds a detection may fall outside a label window")
+    ap.add_argument("--dedupe", type=float, default=10.0,
+                    help="merge same-source same-type detections closer than this many seconds (0 = off)")
     ap.add_argument("--verified-only", action="store_true", help="ignore labels not yet checked by a human")
     ap.add_argument("--no-save", action="store_true")
     a = ap.parse_args(argv)
@@ -118,7 +132,7 @@ def main(argv: list[str] | None = None) -> dict:
     manifest = json.load(open(manifest_path)) if manifest_path else {}
     clips, withheld = manifest.get("clips", []), manifest.get("withheld", [])
 
-    res = score_all(labels, events, clips, a.tol, withheld)
+    res = score_all(labels, events, clips, a.tol, withheld, a.dedupe)
     fallback = sum(1 for e in events if e.get("source") == "asr" and e.get("detail", {}).get("fallback"))
     asr_total = sum(1 for e in events if e.get("source") == "asr")
 

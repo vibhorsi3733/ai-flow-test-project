@@ -53,6 +53,15 @@ def test_overlap_withheld_counts_as_covered_but_dropped_does_not():
     assert res["package"]["wicket"].hits == 0
 
 
+def test_dedupe_merges_repeats_of_same_source_and_type():
+    events = [{"type": "wicket", "t": 105.0, "source": "asr"},
+              {"type": "wicket", "t": 106.0, "source": "asr"},   # same call sent twice
+              {"type": "wicket", "t": 106.0, "source": "ocr"}]   # other source: kept
+    res = score_all(LABELS, events, [], tol=0, dedupe_s=10)
+    assert res["asr"]["wicket"].false_alarms == 0 and res["asr"]["wicket"].hits == 1
+    assert res["ocr"]["wicket"].hits == 1
+
+
 def test_audio_report_counts_peaks_near_balls():
     events = [{"type": "excitement", "t": 104.0, "source": "audio"},
               {"type": "excitement", "t": 500.0, "source": "audio"}]
