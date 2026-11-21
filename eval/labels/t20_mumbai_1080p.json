@@ -1,0 +1,161 @@
+{
+ "match": "t20_mumbai_1080p",
+ "video": "demo/t20_mumbai_1080p.mp4",
+ "clock": "stream seconds (same as events.jsonl 't')",
+ "how_to_verify": "Watch each window [lo, hi] in the video. Set verified=true if the event is really there, fix lo/hi to the ball, delete wrong rows, and add balls the scoreboard missed (the reel skips overs, so expect missing fours/sixes).",
+ "labels": [
+  {
+   "type": "four",
+   "lo": 56.08,
+   "hi": 63.1,
+   "innings": 1,
+   "score": "6/0",
+   "overs": "0.3",
+   "verified": false
+  },
+  {
+   "type": "wicket",
+   "lo": 66.1,
+   "hi": 101.28,
+   "innings": 1,
+   "score": "6/1",
+   "overs": "0.5",
+   "verified": false
+  },
+  {
+   "type": "wicket",
+   "lo": 151.84,
+   "hi": 181.1,
+   "innings": 1,
+   "score": "94/2",
+   "overs": "11.3",
+   "verified": false
+  },
+  {
+   "type": "four",
+   "lo": 181.1,
+   "hi": 186.02,
+   "innings": 1,
+   "score": "99/2",
+   "overs": "12.0",
+   "verified": false
+  },
+  {
+   "type": "wicket",
+   "lo": 186.02,
+   "hi": 234.42,
+   "innings": 1,
+   "score": "116/3",
+   "overs": "14.0",
+   "verified": false
+  },
+  {
+   "type": "wicket",
+   "lo": 266.36,
+   "hi": 287.2,
+   "innings": 1,
+   "score": "157/4",
+   "overs": "18.0",
+   "verified": false
+  },
+  {
+   "type": "four",
+   "lo": 287.2,
+   "hi": 300.16,
+   "innings": 1,
+   "score": "161/4",
+   "overs": "18.1",
+   "verified": false
+  },
+  {
+   "type": "wicket",
+   "lo": 312.0,
+   "hi": 339.42,
+   "innings": 1,
+   "score": "177/5",
+   "overs": "19.4",
+   "verified": false
+  },
+  {
+   "type": "wicket",
+   "lo": 339.42,
+   "hi": 362.06,
+   "innings": 1,
+   "score": "179/6",
+   "overs": "19.5",
+   "verified": false
+  },
+  {
+   "type": "wicket",
+   "lo": 433.0,
+   "hi": 461.2,
+   "innings": 2,
+   "score": "69/1",
+   "overs": "7.4",
+   "verified": false
+  },
+  {
+   "type": "four",
+   "lo": 461.2,
+   "hi": 469.82,
+   "innings": 2,
+   "score": "73/1",
+   "overs": "7.5",
+   "verified": false
+  },
+  {
+   "type": "wicket",
+   "lo": 473.36,
+   "hi": 502.52,
+   "innings": 2,
+   "score": "112/2",
+   "overs": "12.2",
+   "verified": false
+  },
+  {
+   "type": "wicket",
+   "lo": 502.52,
+   "hi": 533.12,
+   "innings": 2,
+   "score": "127/3",
+   "overs": "14.2",
+   "verified": false
+  },
+  {
+   "type": "wicket",
+   "lo": 533.12,
+   "hi": 562.68,
+   "innings": 2,
+   "score": "155/4",
+   "overs": "17.4",
+   "verified": false
+  },
+  {
+   "type": "wicket",
+   "lo": 562.68,
+   "hi": 581.56,
+   "innings": 2,
+   "score": "171/5",
+   "overs": "18.5",
+   "verified": false
+  },
+  {
+   "type": "six",
+   "lo": 581.56,
+   "hi": 590.56,
+   "innings": 2,
+   "score": "177/5",
+   "overs": "19.0",
+   "verified": false
+  },
+  {
+   "type": "four",
+   "lo": 593.56,
+   "hi": 608.8,
+   "innings": 2,
+   "score": "181/5",
+   "overs": "19.2",
+   "verified": false
+  }
+ ]
+}
