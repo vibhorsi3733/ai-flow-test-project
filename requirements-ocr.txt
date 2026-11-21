@@ -1,0 +1,4 @@
+# Only needed when OCR_AVAILABLE=true
+paddlepaddle-gpu>=2.6     # or `paddlepaddle` for CPU
+paddleocr>=2.7,<3
+opencv-python-headless>=4.9

@@ -1,0 +1,6 @@
+anthropic>=1.0
+pydantic>=2.7
+pydantic-settings>=2.3
+numpy>=1.26
+faster-whisper>=1.1
+# System dependency: ffmpeg (with SRT support) must be on PATH

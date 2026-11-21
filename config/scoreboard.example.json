@@ -1,0 +1,10 @@
+{
+  "_comment": "Pixel boxes on a 1920x1080 frame. Re-measure from this season's broadcast graphics.",
+  "season": "IPL2026",
+  "resolution": [1920, 1080],
+  "regions": {
+    "score": { "x": 210, "y": 985, "w": 140, "h": 45 },
+    "overs": { "x": 360, "y": 985, "w": 90, "h": 45 }
+  },
+  "consensus_frames": 3
+}

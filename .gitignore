@@ -1,0 +1,12 @@
+.env
+runtime/
+output/
+__pycache__/
+config/match.json
+config/scoreboard.json
+runtime_1080/
+demo/
+*.mp4
+.pytest_cache/
+.venv/
+eval/results/
