@@ -1,0 +1,29 @@
+{
+ "id": "f01dccd7ee12",
+ "type": "milestone",
+ "t": 130.6,
+ "confidence": 0.75,
+ "sources": [
+  "asr"
+ ],
+ "hold_reasons": [
+  "asr_only"
+ ],
+ "detail": {
+  "summary": "Jigar Rana reaches a milestone with a single, celebrated by the Triumph Knights dugout.",
+  "players": [
+   "Jigar"
+  ],
+  "quote": "He'll get there with another single as the Triumph Knights, those boys sitting in the..."
+ },
+ "segments": [
+  [
+   126.6,
+   138.6
+  ]
+ ],
+ "caption": "KEY MOMENT",
+ "caption_t": 130.6,
+ "caption_offset": 4.0,
+ "duration": 12.0
+}

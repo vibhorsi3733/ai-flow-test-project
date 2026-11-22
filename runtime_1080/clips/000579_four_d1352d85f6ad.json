@@ -1,0 +1,28 @@
+{
+ "id": "d1352d85f6ad",
+ "type": "four",
+ "t": 579.56,
+ "confidence": 0.8,
+ "sources": [
+  "asr"
+ ],
+ "hold_reasons": [
+  "asr_only",
+  "no_cut_snap"
+ ],
+ "detail": {
+  "summary": "Batter pulls a match-winning boundary to win the game for Eagle Thane Strikers.",
+  "players": [],
+  "quote": "He smacks it, pulls it into..."
+ },
+ "segments": [
+  [
+   572.56,
+   582.56
+  ]
+ ],
+ "caption": "KEY MOMENT",
+ "caption_t": 579.56,
+ "caption_offset": 7.0,
+ "duration": 10.0
+}

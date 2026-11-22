@@ -1,0 +1,42 @@
+{
+ "id": "7420cfeb3fc5",
+ "type": "wicket",
+ "t": 394.2,
+ "confidence": 0.95,
+ "sources": [
+  "asr",
+  "ocr"
+ ],
+ "hold_reasons": [
+  "run_out",
+  "no_cut_snap"
+ ],
+ "detail": {
+  "score": "179/7",
+  "overs": "20.0",
+  "wickets": 1,
+  "innings": 1,
+  "prev_score": "179/6",
+  "prev_overs": "19.5",
+  "prev_change_t": 362.06,
+  "confirm_source": "innings_end",
+  "innings_end_t": 400.96,
+  "innings_end_id": "e8c055eb533a",
+  "event_wicket_no": 7,
+  "score_basis": "board",
+  "call_t": 394.2,
+  "quotes": [
+   "Impressive. And one more easy run out. How many run outs have you..."
+  ]
+ },
+ "segments": [
+  [
+   384.2,
+   397.66
+  ]
+ ],
+ "caption": "RUN OUT",
+ "caption_t": 394.66,
+ "caption_offset": 10.460000000000036,
+ "duration": 13.46
+}

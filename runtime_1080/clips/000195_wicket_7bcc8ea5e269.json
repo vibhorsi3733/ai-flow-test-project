@@ -1,0 +1,54 @@
+{
+ "id": "7bcc8ea5e269",
+ "type": "wicket",
+ "t": 195.04,
+ "confidence": 0.75,
+ "sources": [
+  "asr",
+  "ocr"
+ ],
+ "hold_reasons": [
+  "slow_confirm",
+  "run_out",
+  "review",
+  "score_inferred"
+ ],
+ "detail": {
+  "prev_score": "99/2",
+  "prev_overs": "12.0",
+  "score": "116/3",
+  "overs": "14.0",
+  "runs": 17,
+  "gap": true,
+  "prev_change_t": 186.02,
+  "wickets": 1,
+  "innings": 1,
+  "call_t": 195.04,
+  "confirm_t": 234.42,
+  "quotes": [
+   "We have a review for a runout at the strikers end.",
+   "And the third umpire's decision. There comes, that's the end and that's very unfortunate.",
+   "He is batting well. Parikshit unfortunately run out there.",
+   "You can see this, trying to seal that single and a direct hit, resulting in the run out.",
+   "And as for the DRS, front on coming."
+  ],
+  "score_basis": "inferred_next_ball",
+  "event_score": "99/3",
+  "event_overs": "12.1",
+  "event_wicket_no": 3
+ },
+ "segments": [
+  [
+   185.52,
+   198.04
+  ],
+  [
+   224.42,
+   234.3
+  ]
+ ],
+ "caption": "RUN OUT \u00b7 DIRECT HIT",
+ "caption_t": 224.52,
+ "caption_offset": 12.620000000000005,
+ "duration": 22.4
+}

@@ -67,6 +67,7 @@ flowchart TD
 |---|---|
 | Source video (YouTube, used as a stand-in for the live SRT feed) | https://www.youtube.com/watch?v=F62YNMNfvA4 |
 | Output highlights video (4:58, 1080p) | https://wpz5sl5dmq.ufs.sh/f/mY3PNsje3CtypowHhcdjIXq7xtJKiBkbU298L4yEwu1gCo6F |
+| All single clips (24 clips, 1080p, 299 MB; 16 used in the video) | _to be added (UploadThing)_ |
 
 Demo result (run `match_highlights_20261123_020437`, `HIGHLIGHT_SCOPE=match`):
 
@@ -95,8 +96,14 @@ from a full-match run (`HIGHLIGHT_SCOPE=match`) of the demo source:
 The single clips are not in `output/`. They are cut during the match into the clips folder of the runtime directory
 (`runtime_1080/clips/` for this run), one `<match_time>_<type>_<id>.mp4` per clip with a `.json` of its details next to
 it, e.g. `000070_wicket_e6a98e1e9670.mp4`. The manifest's `clips[].clip_file` names the file each clip in the package
-came from. The folder also keeps the candidate clips the curator did not pick (24 cut, 16 used here). Like `output/`,
-it is git-ignored.
+came from. The folder also keeps the candidate clips the curator did not pick (24 cut, 16 used here). All 24 clips
+are linked in the [Demo](#demo) table.
+
+The runtime directory also holds the rest of the run's working files: `segments/` (the recorded source in short
+`.ts` chunks, which clips are cut from), `cards/` (rendered title / innings / result cards), `events*.jsonl` (detected
+events from the scoreboard OCR and the commentary, before and after fusing) and `cuts.json` (detected camera cuts).
+The repo has this run's [`runtime_1080/`](runtime_1080/) with the data files only (events, cuts, segment list, each
+clip's `.json`); the video files (`.mp4` clips and cards, `.ts` segments) are left out because of the source rights.
 
 ## Overview
 

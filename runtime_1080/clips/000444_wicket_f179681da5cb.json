@@ -1,0 +1,48 @@
+{
+ "id": "f179681da5cb",
+ "type": "wicket",
+ "t": 444.72,
+ "confidence": 0.75,
+ "sources": [
+  "asr",
+  "ocr"
+ ],
+ "hold_reasons": [
+  "score_inferred",
+  "no_cut_snap",
+  "no_call_anchor"
+ ],
+ "detail": {
+  "prev_score": "31/0",
+  "prev_overs": "2.4",
+  "score": "69/1",
+  "overs": "7.4",
+  "runs": 38,
+  "gap": true,
+  "prev_change_t": 433.0,
+  "wickets": 1,
+  "innings": 2,
+  "call_t": 444.72,
+  "confirm_t": 461.2,
+  "quotes": [
+   "I'm in the middle of losing a wicket in doing so.",
+   "Power play, they were going pretty much neck and neck and that is an edge."
+  ],
+  "score_basis": "inferred_next_ball",
+  "event_score": "31/1",
+  "event_overs": "2.5",
+  "event_wicket_no": 1,
+  "prev_is_innings_start": true,
+  "gap_anchor_t": 440.0
+ },
+ "segments": [
+  [
+   431.5,
+   456.5
+  ]
+ ],
+ "caption": "WICKET",
+ "caption_t": 441.0,
+ "caption_offset": 9.5,
+ "duration": 25.0
+}

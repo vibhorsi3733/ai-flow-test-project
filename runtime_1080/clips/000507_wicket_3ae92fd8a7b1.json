@@ -1,0 +1,47 @@
+{
+ "id": "3ae92fd8a7b1",
+ "type": "wicket",
+ "t": 507.12,
+ "confidence": 0.75,
+ "sources": [
+  "asr",
+  "ocr"
+ ],
+ "hold_reasons": [
+  "slow_confirm",
+  "score_inferred",
+  "no_cut_snap",
+  "no_call_anchor"
+ ],
+ "detail": {
+  "prev_score": "112/2",
+  "prev_overs": "12.2",
+  "score": "127/3",
+  "overs": "14.2",
+  "runs": 15,
+  "gap": true,
+  "prev_change_t": 502.52,
+  "wickets": 1,
+  "innings": 2,
+  "call_t": 507.12,
+  "confirm_t": 533.12,
+  "quotes": [
+   "In North-the-distance and hanging on it, wait for dear life."
+  ],
+  "score_basis": "inferred_next_ball",
+  "event_score": "112/3",
+  "event_overs": "12.3",
+  "event_wicket_no": 3,
+  "gap_anchor_t": 509.52
+ },
+ "segments": [
+  [
+   502.32,
+   527.32
+  ]
+ ],
+ "caption": "WICKET",
+ "caption_t": 510.52,
+ "caption_offset": 8.199999999999989,
+ "duration": 25.0
+}

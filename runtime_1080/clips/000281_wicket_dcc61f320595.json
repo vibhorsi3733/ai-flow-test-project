@@ -1,0 +1,43 @@
+{
+ "id": "dcc61f320595",
+ "type": "wicket",
+ "t": 281.2,
+ "confidence": 0.75,
+ "sources": [
+  "ocr"
+ ],
+ "hold_reasons": [
+  "no_call_anchor",
+  "score_inferred",
+  "no_cut_snap"
+ ],
+ "detail": {
+  "prev_score": "139/3",
+  "prev_overs": "16.1",
+  "score": "157/4",
+  "overs": "18.0",
+  "runs": 18,
+  "gap": true,
+  "prev_change_t": 266.36,
+  "wickets": 1,
+  "innings": 1,
+  "call_t": null,
+  "confirm_t": 287.2,
+  "quotes": [],
+  "score_basis": "inferred_next_ball",
+  "event_score": "139/4",
+  "event_overs": "16.2",
+  "event_wicket_no": 4,
+  "gap_anchor_t": 273.36
+ },
+ "segments": [
+  [
+   266.16,
+   287.08
+  ]
+ ],
+ "caption": "WICKET",
+ "caption_t": 274.36,
+ "caption_offset": 8.199999999999989,
+ "duration": 20.92
+}

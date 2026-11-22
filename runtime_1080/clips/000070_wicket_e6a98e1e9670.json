@@ -1,0 +1,50 @@
+{
+ "id": "e6a98e1e9670",
+ "type": "wicket",
+ "t": 70.5,
+ "confidence": 0.95,
+ "sources": [
+  "asr",
+  "ocr"
+ ],
+ "hold_reasons": [
+  "slow_confirm",
+  "run_out",
+  "review"
+ ],
+ "detail": {
+  "prev_score": "6/0",
+  "prev_overs": "0.4",
+  "score": "6/1",
+  "overs": "0.5",
+  "runs": 0,
+  "gap": false,
+  "prev_change_t": 66.1,
+  "wickets": 1,
+  "innings": 1,
+  "call_t": 70.5,
+  "confirm_t": 101.28,
+  "quotes": [
+   "Bowling, and that's us! Direct hit!",
+   "And that could be the first wicket down there.",
+   "Our review for runout at the Bolaal friend. Can you give me your first angle please?",
+   "Quick silver work in the field and that's the first wicket down for prime knights.",
+   "I think Sidhaant was batting well, but unfortunately we run out."
+  ],
+  "score_basis": "board"
+ },
+ "segments": [
+  [
+   65.6,
+   73.5
+  ],
+  [
+   91.28,
+   108.28
+  ]
+ ],
+ "caption": "RUN OUT \u00b7 DIRECT HIT",
+ "caption_t": 101.28,
+ "caption_offset": 17.900000000000006,
+ "duration": 24.9
+}

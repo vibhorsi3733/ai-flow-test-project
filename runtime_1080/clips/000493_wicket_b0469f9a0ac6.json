@@ -1,0 +1,46 @@
+{
+ "id": "b0469f9a0ac6",
+ "type": "wicket",
+ "t": 493.4,
+ "confidence": 0.75,
+ "sources": [
+  "asr",
+  "ocr"
+ ],
+ "hold_reasons": [
+  "score_inferred",
+  "no_cut_snap",
+  "no_call_anchor"
+ ],
+ "detail": {
+  "prev_score": "104/1",
+  "prev_overs": "11.2",
+  "score": "112/2",
+  "overs": "12.2",
+  "runs": 8,
+  "gap": true,
+  "prev_change_t": 473.36,
+  "wickets": 1,
+  "innings": 2,
+  "call_t": 493.4,
+  "confirm_t": 502.52,
+  "quotes": [
+   "And holds out into the deep on the offside."
+  ],
+  "score_basis": "inferred_next_ball",
+  "event_score": "104/2",
+  "event_overs": "11.3",
+  "event_wicket_no": 2,
+  "gap_anchor_t": 480.36
+ },
+ "segments": [
+  [
+   473.16,
+   493.96
+  ]
+ ],
+ "caption": "WICKET",
+ "caption_t": 481.36,
+ "caption_offset": 8.199999999999989,
+ "duration": 20.8
+}

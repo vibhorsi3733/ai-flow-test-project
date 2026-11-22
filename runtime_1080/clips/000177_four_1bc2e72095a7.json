@@ -1,0 +1,40 @@
+{
+ "id": "1bc2e72095a7",
+ "type": "four",
+ "t": 177.6,
+ "confidence": 0.6,
+ "sources": [
+  "asr",
+  "ocr"
+ ],
+ "hold_reasons": [
+  "ocr_low_conf",
+  "no_cut_snap"
+ ],
+ "detail": {
+  "summary": "Suryakumar Yadav starts his innings with a boundary straight away.",
+  "players": [
+   "Suryakumar Yadav"
+  ],
+  "quote": "950s vs Suryakumar Yadav. Mr. 360 they call him and starts off with the boundary straight away.",
+  "prev_score": "94/2",
+  "prev_overs": "11.3",
+  "score": "99/2",
+  "overs": "12.0",
+  "runs": 5,
+  "gap": true,
+  "prev_change_t": 181.1,
+  "innings": 1,
+  "confirm_t": 186.02
+ },
+ "segments": [
+  [
+   170.6,
+   183.5
+  ]
+ ],
+ "caption": "FOUR",
+ "caption_t": 180.1,
+ "caption_offset": 9.5,
+ "duration": 12.9
+}

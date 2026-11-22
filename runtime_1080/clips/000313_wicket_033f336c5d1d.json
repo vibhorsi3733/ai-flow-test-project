@@ -1,0 +1,47 @@
+{
+ "id": "033f336c5d1d",
+ "type": "wicket",
+ "t": 313.84,
+ "confidence": 0.75,
+ "sources": [
+  "asr",
+  "ocr"
+ ],
+ "hold_reasons": [
+  "slow_confirm",
+  "score_inferred",
+  "no_cut_snap",
+  "no_call_anchor"
+ ],
+ "detail": {
+  "prev_score": "177/4",
+  "prev_overs": "19.2",
+  "score": "177/5",
+  "overs": "19.4",
+  "runs": 0,
+  "gap": true,
+  "prev_change_t": 312.0,
+  "wickets": 1,
+  "innings": 1,
+  "call_t": 313.84,
+  "confirm_t": 339.42,
+  "quotes": [
+   "29 of those have come from Suryakumar Yadav. That's got to be out. That's a nice thick edge."
+  ],
+  "score_basis": "inferred_next_ball",
+  "event_score": "177/5",
+  "event_overs": "19.3",
+  "event_wicket_no": 5,
+  "gap_anchor_t": 319.0
+ },
+ "segments": [
+  [
+   311.8,
+   335.54
+  ]
+ ],
+ "caption": "WICKET",
+ "caption_t": 320.0,
+ "caption_offset": 8.199999999999989,
+ "duration": 23.74
+}

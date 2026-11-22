@@ -1,0 +1,46 @@
+{
+ "id": "665b6849ae34",
+ "type": "wicket",
+ "t": 157.5,
+ "confidence": 0.95,
+ "sources": [
+  "asr",
+  "ocr"
+ ],
+ "hold_reasons": [
+  "slow_confirm",
+  "over_cap"
+ ],
+ "detail": {
+  "prev_score": "94/1",
+  "prev_overs": "11.2",
+  "score": "94/2",
+  "overs": "11.3",
+  "runs": 0,
+  "gap": false,
+  "prev_change_t": 151.84,
+  "wickets": 1,
+  "innings": 1,
+  "call_t": 157.5,
+  "confirm_t": 181.1,
+  "quotes": [
+   "Kulkarni. His input should be vital for the side. Thane Strikers, this is gone.",
+   "Straight to hand and that's the wicket they were looking for. That's the breakthrough. Jigar gone."
+  ],
+  "score_basis": "board"
+ },
+ "segments": [
+  [
+   149.5,
+   160.5
+  ],
+  [
+   171.1,
+   184.1
+  ]
+ ],
+ "caption": "WICKET",
+ "caption_t": 181.1,
+ "caption_offset": 21.0,
+ "duration": 24.0
+}

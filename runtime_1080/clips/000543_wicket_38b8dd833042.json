@@ -1,0 +1,46 @@
+{
+ "id": "38b8dd833042",
+ "type": "wicket",
+ "t": 543.64,
+ "confidence": 0.75,
+ "sources": [
+  "asr",
+  "ocr"
+ ],
+ "hold_reasons": [
+  "score_inferred",
+  "no_cut_snap",
+  "no_call_anchor"
+ ],
+ "detail": {
+  "prev_score": "127/3",
+  "prev_overs": "14.2",
+  "score": "155/4",
+  "overs": "17.4",
+  "runs": 28,
+  "gap": true,
+  "prev_change_t": 533.12,
+  "wickets": 1,
+  "innings": 2,
+  "call_t": 543.64,
+  "confirm_t": 562.68,
+  "quotes": [
+   "Superbly held there."
+  ],
+  "score_basis": "inferred_next_ball",
+  "event_score": "127/4",
+  "event_overs": "14.3",
+  "event_wicket_no": 4,
+  "gap_anchor_t": 540.12
+ },
+ "segments": [
+  [
+   532.92,
+   557.92
+  ]
+ ],
+ "caption": "WICKET",
+ "caption_t": 541.12,
+ "caption_offset": 8.200000000000045,
+ "duration": 25.0
+}

@@ -1,0 +1,37 @@
+{
+ "id": "cca6e2a85409",
+ "type": "four",
+ "t": 295.6,
+ "confidence": 0.85,
+ "sources": [
+  "asr",
+  "ocr"
+ ],
+ "hold_reasons": [],
+ "detail": {
+  "summary": "Suryakumar Yadav gets four runs over square after a misfield.",
+  "players": [
+   "Suryakumar Yadav"
+  ],
+  "quote": "3-0, 4 runs and Amit would be livid with that feeling effort.",
+  "prev_score": "157/4",
+  "prev_overs": "18.0",
+  "score": "161/4",
+  "overs": "18.1",
+  "runs": 4,
+  "gap": false,
+  "prev_change_t": 287.2,
+  "innings": 1,
+  "confirm_t": 300.16
+ },
+ "segments": [
+  [
+   289.23,
+   301.65
+  ]
+ ],
+ "caption": "FOUR",
+ "caption_t": 298.1,
+ "caption_offset": 8.870000000000005,
+ "duration": 12.42
+}

@@ -1,0 +1,47 @@
+{
+ "id": "40a396d02772",
+ "type": "wicket",
+ "t": 356.06,
+ "confidence": 0.95,
+ "sources": [
+  "asr",
+  "ocr"
+ ],
+ "hold_reasons": [
+  "no_call_anchor",
+  "run_out",
+  "score_inferred"
+ ],
+ "detail": {
+  "prev_score": "177/5",
+  "prev_overs": "19.4",
+  "score": "179/6",
+  "overs": "19.5",
+  "runs": 2,
+  "gap": false,
+  "prev_change_t": 339.42,
+  "wickets": 1,
+  "innings": 1,
+  "call_t": null,
+  "confirm_t": 362.06,
+  "quotes": [
+   "Brilliantly taken by the keeper. Also going to result in another runout."
+  ],
+  "score_basis": "unknown",
+  "event_wicket_no": 6
+ },
+ "segments": [
+  [
+   339.22,
+   348.78
+  ],
+  [
+   353.62,
+   362.3
+  ]
+ ],
+ "caption": "RUN OUT",
+ "caption_t": 358.3,
+ "caption_offset": 14.239999999999952,
+ "duration": 18.24
+}

@@ -1,0 +1,34 @@
+{
+ "id": "a2f168dddb82",
+ "type": "innings_start",
+ "t": 412.72,
+ "confidence": 0.8,
+ "sources": [
+  "asr",
+  "ocr"
+ ],
+ "hold_reasons": [],
+ "detail": {
+  "summary": "The first ball of the innings is about to be bowled.",
+  "players": [],
+  "quote": "Starting the first ball coming up.",
+  "prev_score": "179/7",
+  "prev_overs": "20.0",
+  "score": "31/0",
+  "overs": "2.4",
+  "joined": "31/0 (2.4)",
+  "prev_innings_last": "179/7 (20.0)",
+  "innings": 2,
+  "confirm_t": 433.0
+ },
+ "segments": [
+  [
+   412.92,
+   424.42
+  ]
+ ],
+ "caption": "FIRST BALL",
+ "caption_t": 415.92,
+ "caption_offset": 3.0,
+ "duration": 11.5
+}

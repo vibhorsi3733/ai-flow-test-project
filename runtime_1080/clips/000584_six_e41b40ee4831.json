@@ -1,0 +1,35 @@
+{
+ "id": "e41b40ee4831",
+ "type": "six",
+ "t": 584.56,
+ "confidence": 0.95,
+ "sources": [
+  "ocr"
+ ],
+ "hold_reasons": [
+  "no_cut_snap"
+ ],
+ "detail": {
+  "prev_score": "171/5",
+  "prev_overs": "18.5",
+  "score": "177/5",
+  "overs": "19.0",
+  "runs": 6,
+  "gap": false,
+  "prev_change_t": 581.56,
+  "innings": 2,
+  "confirm_t": 590.56,
+  "shot_t": 584.36,
+  "hit_t": 583.06
+ },
+ "segments": [
+  [
+   581.36,
+   589.32
+  ]
+ ],
+ "caption": "SIX",
+ "caption_t": 583.56,
+ "caption_offset": 2.199999999999932,
+ "duration": 7.96
+}

@@ -1,0 +1,29 @@
+{
+ "id": "179f5c47c22b",
+ "type": "milestone",
+ "t": 397.96,
+ "confidence": 0.4,
+ "sources": [
+  "asr"
+ ],
+ "hold_reasons": [
+  "asr_only"
+ ],
+ "detail": {
+  "summary": "Jigar is praised for what may be his fifty.",
+  "players": [
+   "Jigar"
+  ],
+  "quote": "Jigar Rana was extremely good, impressive with his 50th"
+ },
+ "segments": [
+  [
+   393.96,
+   405.96
+  ]
+ ],
+ "caption": "KEY MOMENT",
+ "caption_t": 397.96,
+ "caption_offset": 4.0,
+ "duration": 12.0
+}

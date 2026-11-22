@@ -1,0 +1,35 @@
+{
+ "id": "74086fc13e75",
+ "type": "four",
+ "t": 463.82,
+ "confidence": 0.85,
+ "sources": [
+  "ocr"
+ ],
+ "hold_reasons": [
+  "no_cut_snap"
+ ],
+ "detail": {
+  "prev_score": "69/1",
+  "prev_overs": "7.4",
+  "score": "73/1",
+  "overs": "7.5",
+  "runs": 4,
+  "gap": false,
+  "prev_change_t": 461.2,
+  "innings": 2,
+  "confirm_t": 469.82,
+  "shot_t": 463.12,
+  "hit_t": 462.7
+ },
+ "segments": [
+  [
+   461.0,
+   469.78
+  ]
+ ],
+ "caption": "FOUR",
+ "caption_t": 465.2,
+ "caption_offset": 4.199999999999989,
+ "duration": 8.78
+}
