@@ -72,7 +72,7 @@ class FusedEvent:
     id: str = field(default_factory=lambda: uuid.uuid4().hex[:12])
     # Why a human must check this before publishing (empty = auto-publishable).
     # run_out | review | asr_only | no_call_anchor | no_cut_snap | slow_confirm | ocr_low_conf | over_cap
-    # | multi_wicket_gap | innings_inferred | gap_unanchored
+    # | multi_wicket_gap | innings_inferred | gap_unanchored | score_inferred
     hold_reasons: list[str] = field(default_factory=list)
 
     def hold(self, reason: str) -> None:

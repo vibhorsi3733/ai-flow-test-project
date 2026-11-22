@@ -352,6 +352,21 @@ def pts_continuity(pts: list[float | None], durations: list[float | None],
     return True, "continuous"
 
 
+def fill_unknown_pts(pts: list[float | None], durations: list[float | None]) -> list[float | None]:
+    """A sliver segment (e.g. 0.16 s cut between two keyframes) has no SPS/PPS of its own, so `ffmpeg -i` cannot
+    report its first PTS. Inside a byte-join it decodes fine with the previous segment's parameter sets, so infer
+    its PTS from a known neighbour: prev PTS + prev duration (or next PTS - own duration). Never invents a value
+    without a known neighbour and a known duration; pts_continuity still checks every step."""
+    out = list(pts)
+    for i in range(1, len(out)):                       # forward from known predecessors
+        if out[i] is None and out[i - 1] is not None and durations[i - 1] is not None:
+            out[i] = round(out[i - 1] + durations[i - 1], 6)
+    for i in range(len(out) - 2, -1, -1):              # backward for a leading unknown
+        if out[i] is None and out[i + 1] is not None and durations[i] is not None:
+            out[i] = round(out[i + 1] - durations[i], 6)
+    return out
+
+
 async def continuous_input(segments: list[Path], tmp_dir: Path, tag: str) -> tuple[list[str], float, Path | None]:
     """ffmpeg input args + the input time of segments[0]'s start.
 
@@ -362,6 +377,7 @@ async def continuous_input(segments: list[Path], tmp_dir: Path, tag: str) -> tup
     at an ad break, reconnect, unknown PTS) falls back to the demuxer for this clip, logged."""
     pts = [await segment_pts(p) for p in segments]
     durations = [_SEG_INFO.get(_key(p), (None, None))[1] for p in segments]
+    pts = fill_unknown_pts(pts, durations)
     ok, why = pts_continuity(pts, durations)
     if ok:
         return ["-copyts", "-i", "concat:" + "|".join(str(p.resolve()) for p in segments)], pts[0], None

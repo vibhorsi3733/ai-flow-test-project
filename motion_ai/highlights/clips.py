@@ -16,6 +16,27 @@ Caption: '{LABEL} · {runs}/{wkts} ({over} ov)', burned in, shown from confirm (
 Gap wickets with no commentary call (fm/guidance_v1): anchor = loudest 0.5s in [confirm-20, confirm-2],
   start = earliest cut in [anchor-10, anchor-4]; neither -> [confirm-16, confirm+4] + hold gap_unanchored. Cap 20s.
 Winning runs (MATCH_END) are planned like a boundary.
+
+Edited-source rules (caption check report, scratchpad/caption_check/report.md — the demo is a highlights edit, so
+the scoreboard change confirming an event can come several balls after it):
+  Gap wicket, no call, prev_change_t known: the dismissal is shown right after the PREVIOUS change.
+    start = latest cut in [prev-1.5, prev+0.3], else prev-0.2 (prev-1.5 after the innings-start read)
+      (+hold no_cut_snap)
+    end   = confirm - 0.12 (the next ball follows the board change), capped at start+25, before a late cut
+    caption_t = loudest 0.5s in [prev+1, prev+15] + 1s, not before prev+8 (the WICKET graphic comes
+      prev+8.7..10.6: 139/4 275.1, 31/1 443, 104/2 484; catches end by prev+8)
+  Gap wicket with a call: ranges as above but range 2 ends at confirm-0.12; caption at range-2 start
+    (dismissal card / replay; 116/3: card at 224.4, the 14.1 ball runs live from 234.4).
+  Any wicket: never start more than 0.5s before prev_change_t (the previous ball's aftermath).
+  Non-gap wicket whose runs moved with the wicket (score_basis "unknown"): play resumed before the board
+    changed, so end <= confirm + 0.24 (179/6: board 362.06, the next ball released 363.1).
+  OCR-only boundary (no commentary call before the board change): shot = loudest 0.5s in
+    [max(confirm-16, prev+0.5), confirm-6]; when the previous change is within 16s of the confirm the shot is
+    the first ball after it: start = latest cut in [prev-1.5, prev+0.3], else prev-0.2; otherwise start snapped
+    from the shot as before; end <= confirm - 0.04;
+    caption at shot + 2.5 (161/4: shot 288.6, ball still running at 292). ASR-anchored boundary: caption at ref + 2.5 (6/0: call 56.8, rope 58.5-59.5).
+  avoid_ranges (config/match.json, stream seconds): no frame inside one is used (SUBSCRIBE pop-up 494-497.5).
+  Caption: clamped into the clip, >= 1.5s before its end (177/5 had caption_t == clip end).
 """
 from __future__ import annotations
 
@@ -26,7 +47,8 @@ import re
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from ..events import EventType, FusedEvent
+from ..events import EventType, FusedEvent, Source
+from ..fusion.fuser import annotate_dismissal
 from ..ingest.buffer import SegmentBuffer
 from ..media import loudness, render_clip, scene_cuts
 
@@ -104,10 +126,24 @@ def caption_for(ev: FusedEvent) -> str:
                  EventType.INNINGS_START: "2nd INNINGS" if d.get("innings", 1) >= 2 else "FIRST OVERS",
                  EventType.EXCITEMENT: "BIG MOMENT", EventType.MILESTONE: "MILESTONE",
                  EventType.MATCH_END: "WINNING RUNS"}.get(ev.type, ev.type.value.upper())
-    if not d.get("score"):
+    if ev.type == EventType.WICKET:
+        annotate_dismissal(ev)
+        if d.get("score_basis") == "unknown":       # never print a score that may be wrong
+            n = d.get("event_wicket_no")
+            if not n:
+                return label
+            return f"{ordinal(n)} WICKET" if label == "WICKET" else f"{label} · {ordinal(n)} WICKET"
+    elif ev.type in BOUNDARIES and d.get("gap"):
+        return label                                 # board jumped several balls: score not of this shot
+    score = d.get("event_score") or d.get("score")
+    overs = d.get("event_overs") or d.get("overs")
+    if not score:
         return "KEY MOMENT" if ev.needs_review else label
-    runs_wkts = d["score"]
-    return f"{label} · {runs_wkts} ({d['overs']} ov)" if d.get("overs") else f"{label} · {runs_wkts}"
+    return f"{label} · {score} ({overs} ov)" if overs else f"{label} · {score}"
+
+
+def ordinal(n: int) -> str:
+    return f"{n}{'th' if 10 <= n % 100 <= 20 else {1: 'st', 2: 'nd', 3: 'rd'}.get(n % 10, 'th')}"
 
 
 # Range 1 tail: a transcript line's start is when the commentator BEGINS the call; on the demo the call
@@ -146,42 +182,142 @@ def end_by_roar(loud: list[tuple[float, float]], R: float, hi: float, cuts: list
     return round(end, 2)
 
 
-def plan_ranges(ev: FusedEvent, cuts: list[float], loud: list[tuple[float, float]]) -> tuple[list[tuple[float, float]], float | None]:
-    """Pure planning (unit-testable). Returns (ranges, caption_t) and adds hold reasons to ev."""
+PREV_LEAD_S = 0.5        # never start more than this before the previous scoreboard change: the next delivery
+                         # can come up to ~0.4s before the change is read (94/2: delivery 151.5, change 151.84)
+GAP_CAP = CAP_RUNOUT     # gap wicket: delivery + dismissal + first replay
+BOARD_NEXT_BALL_S = 0.12  # end this long before a board change that is followed by the next ball
+UNKNOWN_SCORE_TAIL_S = 0.24
+SHOT_LO, SHOT_HI = 16.0, 6.0   # OCR-only boundary: shot is the crowd peak in [confirm-16, confirm-6]
+ASR_CAPTION_S = 2.5      # boundary call -> ball reaches the rope (6/0: call 56.8, rope 58.5-59.5)
+CAPTION_TAIL_S = 1.5     # caption visible at least this long
+FIRST_BALL_LEAD_S = 0.2   # no cut found: start this long before the change (earlier frames show the previous
+                          # state: 139/4 at 265.9 still shows "116-3 14 / DECISION UPHELD", change 266.36)
+INNINGS_START_LEAD_S = 1.5   # ... unless the previous change is the (slow-confirmed) innings-start read
+GAP_SNAP_LO, GAP_SNAP_HI = 1.5, 0.3   # "first ball after the change" starts on the latest cut in [prev-1.5, prev+0.3]
+                                     # (177/5: a cut at prev-2.9 still shows the previous ball, bar 161-4 18.1)
+
+
+def loudest(loud: list[tuple[float, float]], lo: float, hi: float) -> float | None:
+    """Start time of the loudest 0.5s window in [lo, hi]."""
+    w = [(t, v) for t, v in loud if lo <= t <= hi]
+    return max(w, key=lambda x: x[1])[0] if w else None
+
+
+def _prev_floor(d: dict) -> float | None:
+    p = d.get("prev_change_t")
+    return None if p is None else p - PREV_LEAD_S
+
+
+def _first_ball_lead(d: dict) -> float:
+    return INNINGS_START_LEAD_S if d.get("prev_is_innings_start") else FIRST_BALL_LEAD_S
+
+
+def _is_gap_wicket(ev: FusedEvent) -> bool:
     d = ev.detail
-    if (ev.type == EventType.WICKET and d.get("gap") and d.get("call_t") is None
-            and d.get("confirm_t") is not None):
+    return ev.type == EventType.WICKET and bool(d.get("gap")) and d.get("confirm_t") is not None
+
+
+def _ocr_only_boundary(ev: FusedEvent) -> bool:
+    """No commentary call before the board change: ev.t is just confirm - OCR lag (12-14s after the shot)."""
+    d = ev.detail
+    confirm = d.get("confirm_t")
+    if confirm is None:
+        return False
+    return Source.ASR not in ev.sources or ev.t >= confirm - 2.0
+
+
+def plan_ranges(ev: FusedEvent, cuts: list[float], loud: list[tuple[float, float]],
+                avoid: list[tuple[float, float]] | tuple = ()) -> tuple[list[tuple[float, float]], float | None]:
+    """Pure planning (unit-testable). Returns (ranges, caption_t) and adds hold reasons to ev.
+
+    avoid ranges are cut out and the caption is clamped into the final clip (always visible)."""
+    ranges, cap_t = _plan(ev, cuts, loud)
+    ranges = apply_avoid(ranges, avoid)
+    return ranges, clamp_caption(ranges, cap_t)
+
+
+def _plan(ev: FusedEvent, cuts: list[float], loud: list[tuple[float, float]]):
+    d = ev.detail
+    if ev.type == EventType.WICKET:
+        annotate_dismissal(ev)
+    if _is_gap_wicket(ev) and d.get("call_t") is None:
+        if d.get("prev_change_t") is not None:
+            return _plan_gap_wicket_prev(ev, cuts, loud)
         return _plan_gap_wicket(ev, cuts, loud)
+    floor = _prev_floor(d)
     if ev.type in WICKETISH:
         call = d.get("call_t") if d.get("call_t") is not None else ev.t
         confirm = d.get("confirm_t")
+        gap = _is_gap_wicket(ev)
         R = confirm if confirm is not None else call
         snap = snap_start(cuts, call - 12, call - 3)
         start = snap if snap is not None else call - 10
         if snap is None:
             ev.hold("no_cut_snap")
-        end = end_by_roar(loud, R, 7, cuts)
+        if floor is not None and floor < call - 1.5:
+            start = max(start, floor)
+        if gap:   # the edit goes straight from the replay to the next ball at the board change
+            end = round(confirm - BOARD_NEXT_BALL_S, 2)
+        else:
+            end = end_by_roar(loud, R, 7, cuts)
+            if confirm is not None and d.get("score_basis") == "unknown":
+                end = min(end, round(confirm + UNKNOWN_SCORE_TAIL_S, 2))
         if confirm is not None and (confirm - 10) - (call + RANGE1_TAIL_S) >= 3:
             ranges = [[start, call + RANGE1_TAIL_S], [confirm - 10, end]]
         else:
             ranges = [[start, end]]
         runout = bool({"run_out", "review"} & set(ev.hold_reasons))
-        cap = CAP_RUNOUT if runout else CAP_WICKET
-        start_limit, caption_t = call - 8, (confirm if confirm is not None else call)
+        cap = CAP_RUNOUT if runout or gap else CAP_WICKET
+        if gap:   # caption on the dismissal card / replay, not on a board change that is off screen
+            caption_t = ranges[1][0] + 0.1 if len(ranges) == 2 else call + 1.5
+            R = min(R, end - 3)
+        else:
+            caption_t = confirm if confirm is not None else call
+        start_limit = call - 8
     elif ev.type in BOUNDARIES:
-        ref = ev.t
-        R = ref
-        snap = snap_start(cuts, ref - 8, ref - 3)
-        start = snap if snap is not None else ref - 7
-        if snap is None:
-            ev.hold("no_cut_snap")
+        confirm = d.get("confirm_t")
+        R = ev.t
+        prev = d.get("prev_change_t")
+        ocr_only = _ocr_only_boundary(ev)
+        # OCR-only and the previous change is close: the shot is the first ball after it (161/4: change
+        # 287.2, run-up 287.3, shot 288.6, board 300.16; winning runs: change 593.56, delivery 594.0)
+        near_prev = ocr_only and prev is not None and not d.get("gap") and confirm - prev <= SHOT_LO
+        if ocr_only:
+            lo = max(confirm - SHOT_LO, prev + PREV_LEAD_S) if near_prev else confirm - SHOT_LO
+            shot = loudest(loud, lo, confirm - SHOT_HI)
+            ref = shot if shot is not None else ev.t
+            if shot is not None:
+                d["shot_t"] = round(shot, 2)
+        else:
+            ref = ev.t
+        caption_t = ref + ASR_CAPTION_S
+        if near_prev:
+            in_win = [c for c in cuts if prev - GAP_SNAP_LO <= c <= prev + GAP_SNAP_HI]
+            start = in_win[-1] if in_win else prev - _first_ball_lead(d)
+            if not in_win:
+                ev.hold("no_cut_snap")
+            start_limit = start            # never trim the delivery away
+        else:
+            snap = snap_start(cuts, ref - 8, ref - 3)
+            start = snap if snap is not None else ref - 7
+            if snap is None:
+                ev.hold("no_cut_snap")
+            start_limit = ref - 5
         end = end_by_roar(loud, R, 8, cuts)
+        if ocr_only:
+            end = min(end, round(confirm - FRAME, 2))   # 161/4: the next ball starts at the change (300.2)
+            R = min(R, confirm - SHOT_HI)
+        R = min(R, end - 3)
         ranges = [[start, end]]
-        cap, start_limit, caption_t = CAP_BOUNDARY, ref - 5, ref + 1
+        cap = CAP_BOUNDARY
     else:
         pre, post = WINDOWS.get(ev.type, (6, 6))
         return [(max(0.0, ev.t - pre), ev.t + post)], ev.t
 
+    return _trim(ev, ranges, cap, R, start_limit), caption_t
+
+
+def _trim(ev: FusedEvent, ranges: list[list[float]], cap: float, R: float, start_limit: float):
     total = lambda: sum(b - a for a, b in ranges)  # noqa: E731
     over = total() - cap
     if over > 0:   # 1) end earlier, not before R+3 (replay + OUT are before that)
@@ -192,14 +328,41 @@ def plan_ranges(ev: FusedEvent, cuts: list[float], loud: list[tuple[float, float
         over = total() - cap
     if over > 0.05:
         ev.hold("over_cap")
-    return [(round(a, 2), round(b, 2)) for a, b in ranges], caption_t
+    return [(round(a, 2), round(b, 2)) for a, b in ranges]
 
 
 GAP_PEAK_LO, GAP_PEAK_HI = 20.0, 2.0
+GAP_CAPTION_LO, GAP_CAPTION_HI, GAP_CAPTION_MIN = 1.0, 15.0, 8.0
+
+
+def _plan_gap_wicket_prev(ev: FusedEvent, cuts: list[float], loud: list[tuple[float, float]]):
+    """Gap wicket without a call: the dismissal is the first ball after the previous board change.
+
+    Evidence (stream s): 69/1 catch 432-439 (prev 433.0); 112/2 catch 475-481 (prev 473.36); 127/3 catch
+    507-514 (prev 502.52); 155/4 catch 537.5-541 (prev 533.12); 171/5 bowled 564 (prev 562.68). The replay
+    ends just before the change (69/1: replay to 460.5, change 461.2, next ball 462.8)."""
+    d = ev.detail
+    prev, confirm = d["prev_change_t"], d["confirm_t"]
+    in_win = [c for c in cuts if prev - GAP_SNAP_LO <= c <= prev + GAP_SNAP_HI]
+    if in_win:
+        start = in_win[-1]
+    else:
+        start = prev - _first_ball_lead(d)
+        ev.hold("no_cut_snap")
+    end = min(confirm - BOARD_NEXT_BALL_S, start + GAP_CAP)
+    late = [c for c in cuts if end - 2 <= c <= end and c - start > 10]
+    if late:
+        end = late[0] - FRAME
+    peak = loudest(loud, prev + GAP_CAPTION_LO, min(prev + GAP_CAPTION_HI, end))
+    caption_t = max(prev + GAP_CAPTION_MIN, (peak + 1) if peak is not None else prev + 8)
+    d["gap_anchor_t"] = round(caption_t - 1, 2)
+    ev.hold("no_call_anchor")
+    return [(round(start, 2), round(end, 2))], round(caption_t, 2)
 
 
 def _plan_gap_wicket(ev: FusedEvent, cuts: list[float], loud: list[tuple[float, float]]):
-    """Scoreboard jumped several balls (highlight edit) and nobody called it: anchor on the crowd."""
+    """Fallback (events without prev_change_t): scoreboard jumped several balls and nobody called it —
+    anchor on the crowd."""
     confirm = ev.detail["confirm_t"]
     window = [(t, v) for t, v in loud if confirm - GAP_PEAK_LO <= t <= confirm - GAP_PEAK_HI]
     anchor = max(window, key=lambda x: x[1])[0] if window else None
@@ -214,9 +377,70 @@ def _plan_gap_wicket(ev: FusedEvent, cuts: list[float], loud: list[tuple[float, 
     return [(round(a, 2), round(b, 2)) for a, b in ranges], confirm
 
 
+MIN_PIECE_S = 2.0   # a range piece shorter than this after removing an avoid range is dropped
+
+
+def apply_avoid(ranges, avoid) -> list[tuple[float, float]]:
+    """Remove every avoid range [a0, a1] (source artefacts) from the planned ranges; drop pieces < 2s.
+
+    E.g. the YouTube SUBSCRIBE pop-up burned into the demo source at 494-497.5."""
+    out = [(float(a), float(b)) for a, b in ranges]
+    for a0, a1 in avoid or ():
+        nxt = []
+        for a, b in out:
+            if b <= a0 or a >= a1:
+                nxt.append((a, b))
+                continue
+            if a < a0:
+                nxt.append((a, round(a0 - FRAME, 2)))
+            if b > a1:
+                nxt.append((round(a1 + FRAME, 2), b))
+        out = nxt
+    kept = [(round(a, 2), round(b, 2)) for a, b in out if b - a >= MIN_PIECE_S]
+    return kept or [(round(a, 2), round(b, 2)) for a, b in out if b > a][:1]
+
+
+def clamp_caption(ranges, t: float | None, tail: float = CAPTION_TAIL_S) -> float | None:
+    """Move the caption into the clip so it shows for >= `tail` s: a time before the clip or in a gap goes
+    to the start of the next range; a time too close to the end goes back to (duration - tail)."""
+    if t is None or not ranges:
+        return t
+    dur = sum(b - a for a, b in ranges)
+    off, target = 0.0, None
+    for a, b in ranges:
+        if t <= b:
+            target = off + max(0.0, t - a)
+            break
+        off += b - a
+    if target is None:
+        target = dur
+    target = max(0.0, min(target, dur - tail))
+    off = 0.0
+    for i, (a, b) in enumerate(ranges):
+        last = i == len(ranges) - 1
+        if target < off + (b - a) - 1e-9 or (last and target <= off + (b - a) + 1e-9):
+            return round(a + (target - off), 2)
+        off += b - a
+    return round(ranges[-1][1], 2)
+
+
+MATCH_CONFIG = Path("config/match.json")   # module default; ClipCutter(match_config=...) overrides
+
+
+def load_avoid_ranges(path: Path) -> list[tuple[float, float]]:
+    """`"avoid_ranges": [[494.0, 497.5]]` (stream seconds) from the match config; missing/invalid -> []."""
+    try:
+        raw = json.loads(Path(path).read_text()).get("avoid_ranges") or []
+        return sorted((float(a), float(b)) for a, b in raw if float(b) > float(a))
+    except (OSError, ValueError, TypeError, AttributeError):
+        return []
+
+
 class ClipCutter:
-    def __init__(self, buffer: SegmentBuffer, out_dir: Path, encoder: str, max_parallel: int = 2):
+    def __init__(self, buffer: SegmentBuffer, out_dir: Path, encoder: str, max_parallel: int = 2,
+                 avoid_ranges: list[tuple[float, float]] | None = None, match_config: Path | None = None):
         self.buffer = buffer
+        self.avoid = avoid_ranges if avoid_ranges is not None else load_avoid_ranges(match_config or MATCH_CONFIG)
         self.out_dir = out_dir
         self.encoder = encoder
         self._sem = asyncio.Semaphore(max_parallel)
@@ -242,7 +466,12 @@ class ClipCutter:
     async def plan(self, ev: FusedEvent) -> Clip | None:
         d = ev.detail
         loud_lo = None
-        if ev.type == EventType.WICKET and d.get("gap") and d.get("call_t") is None and d.get("confirm_t"):
+        if ev.type == EventType.WICKET:
+            annotate_dismissal(ev)
+        if _is_gap_wicket(ev) and d.get("call_t") is None and d.get("prev_change_t") is not None:
+            prev, R = d["prev_change_t"], d["confirm_t"]
+            lo, hi, loud_lo = prev - GAP_SNAP_LO - 1, min(R + 1, prev + GAP_CAP + 4), prev
+        elif _is_gap_wicket(ev) and d.get("call_t") is None:
             R = d["confirm_t"]
             lo, hi, loud_lo = R - GAP_PEAK_LO - 11, R + 8, R - GAP_PEAK_LO
         elif ev.type in WICKETISH:
@@ -251,8 +480,12 @@ class ClipCutter:
             lo, hi = call - 13, R + 8
         elif ev.type in BOUNDARIES:
             R, lo, hi = ev.t, ev.t - 9, ev.t + 9
+            if _ocr_only_boundary(ev):
+                confirm = d["confirm_t"]
+                loud_lo = confirm - SHOT_LO
+                lo, hi = min(lo, loud_lo - 9), max(hi, confirm + 1)
         else:
-            ranges, cap_t = plan_ranges(ev, [], [])
+            ranges, cap_t = plan_ranges(ev, [], [], self.avoid)
             return Clip(ev, ranges, self._path(ev), caption_for(ev), cap_t)
         if not await self.buffer.wait_until(hi + 1):
             log.warning("Video for %s at %.1f never arrived; skipping clip", ev.type.value, ev.t)
@@ -263,8 +496,9 @@ class ClipCutter:
             return None
         cuts = await self._cuts(lo, hi)
         l0 = max(lo, loud_lo) if loud_lo is not None else R
-        loud = await loudness([s.path for s in segs], segs[0].start, l0, min(R + 9, hi), self.out_dir)
-        ranges, cap_t = plan_ranges(ev, cuts, loud)
+        l1 = min(max(R + 9, d.get("confirm_t") or 0), hi)
+        loud = await loudness([s.path for s in segs], segs[0].start, l0, l1, self.out_dir)
+        ranges, cap_t = plan_ranges(ev, cuts, loud, self.avoid)
         return Clip(ev, ranges, self._path(ev), caption_for(ev), cap_t, {"cuts": cuts})
 
     def _path(self, ev: FusedEvent) -> Path:

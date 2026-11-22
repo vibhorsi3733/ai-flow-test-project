@@ -90,6 +90,9 @@ class CommentaryDetector(Detector):
         self.lines: list[Line] = []
         self._pending_trigger: float | None = None
         self._last_checked_until = 0.0
+        # (event type, line start) already reported: the next window re-sends ~5 s of context lines, which
+        # made the same call come back twice (e.g. wicket at 105.12 reported in two windows).
+        self._reported: set[tuple[str, float]] = set()
         players = [p for squad in match.get("teams", {}).values() for p in squad]
         self.prompt = f"IPL cricket commentary. {match.get('match', '')}. Players: {', '.join(players)}."
         self._model = None
@@ -123,11 +126,22 @@ class CommentaryDetector(Detector):
 
         events: list[Event] = []
         if self._pending_trigger is not None and seg.end >= self._pending_trigger + FOLLOW_UP_S:
-            events = await self._extract(max(self._pending_trigger - CONTEXT_S, self._last_checked_until - 5), seg.end)
+            events = self._new_only(
+                await self._extract(max(self._pending_trigger - CONTEXT_S, self._last_checked_until - 5), seg.end))
             self._last_checked_until = seg.end
             self._pending_trigger = None
         self.watermark = seg.end
         return events
+
+    def _new_only(self, events: list[Event]) -> list[Event]:
+        """Drop events already reported from the same transcript line (context overlap between windows)."""
+        fresh = []
+        for ev in events:
+            key = (ev.type.value, round(ev.t, 2))
+            if key not in self._reported:
+                self._reported.add(key)
+                fresh.append(ev)
+        return fresh
 
     async def _extract(self, t0: float, t1: float) -> list[Event]:
         window = [ln for ln in self.lines if ln.t1 >= t0 and ln.t0 <= t1]

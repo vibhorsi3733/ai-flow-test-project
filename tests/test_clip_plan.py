@@ -45,7 +45,7 @@ def test_boundary_starts_on_earliest_cut_and_respects_cap():
     ev = FusedEvent(EventType.FOUR, 56.8, 0.85, {Source.OCR, Source.ASR}, {"score": "6/0", "overs": "0.3"})
     ranges, cap_t = plan_ranges(ev, DEMO_CUTS, flat(56.8, 66))
     (a, b), = ranges
-    assert a == 51.48 and b - a <= 15 and cap_t == 57.8
+    assert a == 51.48 and b - a <= 15 and cap_t == 59.3   # call 56.8 + 2.5: ball reaches the rope 58.5-59.5
     assert caption_for(ev) == "FOUR · 6/0 (0.3 ov)"
 
 

@@ -1,16 +1,29 @@
 """Full-match scope (panel spec fm/guidance_v1 §5 + IPL head conditions)."""
 import asyncio
+import json
+import logging
 from pathlib import Path
 from types import SimpleNamespace
+
+import pytest
+from pydantic import ValidationError
+
+from motion_ai.config import OversFilter, Settings, batting_order, parse_overs_spec
 
 from motion_ai.detectors.score_tracker import ScoreState, ScoreTracker, parse_scoreline
 from motion_ai.events import Event, EventType, FusedEvent, Source
 from motion_ai.fusion.fuser import Fuser
 from motion_ai.highlights.clips import Clip, plan_ranges
-from motion_ai.highlights.curator import MatchFacts, match_plan
+from motion_ai.highlights.curator import MatchFacts, match_plan, over_number, rule_based_plan
 from motion_ai.highlights.pipeline import HighlightPipeline
 from motion_ai.highlights.renderer import card_texts, crowd_windows
 from motion_ai.media import scale_filter, video_opts
+
+
+@pytest.fixture(autouse=True)
+def _no_highlight_overs(monkeypatch):
+    """match_plan reads HIGHLIGHT_OVERS from Settings by default: keep a developer's .env out of the tests."""
+    monkeypatch.setenv("HIGHLIGHT_OVERS", "")
 
 
 def feed(tr: ScoreTracker, t0: float, st: ScoreState, n: int, step: float = 0.5):
@@ -279,3 +292,156 @@ def test_card_crowd_bed_windows():
     assert crowd_windows(["title", (1.0, 9.0)], sec, limits=(0.0, 50.0)) == {"title": 0.0}
     # no clip on either side -> no bed (silent card)
     assert crowd_windows(["title", "outro"], sec) == {}
+
+
+# HIGHLIGHT_OVERS (team/overs selection) -----------------------------------------------------------------------
+TEAMS = {"Triumph Knights": [], "Eagle Thane Strikers": []}
+
+
+def _settings(tmp_path, overs, **kw):
+    mj = tmp_path / "match.json"
+    mj.write_text(json.dumps({"teams": TEAMS, "batting_first": "Triumph Knights"}))
+    return Settings(srt_url="srt://x", match_config_path=mj, highlight_overs=overs, _env_file=None, **kw)
+
+
+def test_over_number_edges():
+    assert over_number("0.1") == 1            # first ball
+    assert over_number("0.0") == 1            # nothing bowled yet (e.g. a wide) -> over 1
+    assert over_number("5.6") == 6            # sixth ball of over 6
+    assert over_number("6.0") == 6            # the board right after the ball that completed over 6
+    assert over_number("6.1") == 7
+    assert over_number("19.5") == 20 and over_number("20.0") == 20 and over_number("20") == 20
+    assert over_number(None) is None and over_number("x") is None and over_number("") is None
+
+
+def test_overs_spec_forms():
+    assert parse_overs_spec("1-6") == frozenset(range(1, 7))
+    assert parse_overs_spec([1, 2, 16]) == frozenset({1, 2, 16})
+    assert parse_overs_spec(["1-6", 20]) == frozenset({1, 2, 3, 4, 5, 6, 20})
+    for bad in ("0-6", [21], "6-1", "abc", [], [True]):
+        with pytest.raises(ValueError):
+            parse_overs_spec(bad)
+
+
+def test_highlight_overs_settings_validation(tmp_path):
+    s = _settings(tmp_path, '[{"team":"Triumph Knights","overs":"1-6"},'
+                            '{"team":"Eagle Thane Strikers","overs":[1,2,16,17,18,19,20]}]')
+    f = s.overs_filter()
+    assert f.batting_order == ("Triumph Knights", "Eagle Thane Strikers")
+    assert f.selection["Eagle Thane Strikers"] == frozenset({1, 2, 16, 17, 18, 19, 20})
+    assert _settings(tmp_path, "").overs_filter() is None                    # unset = all overs
+    with pytest.raises(ValidationError, match="unknown team"):
+        _settings(tmp_path, '[{"team":"Mumbai Indians","overs":"1-6"}]')
+    with pytest.raises(ValidationError, match="1..20"):
+        _settings(tmp_path, '[{"team":"Triumph Knights","overs":[0, 21]}]')
+    with pytest.raises(ValidationError, match="not valid JSON"):
+        _settings(tmp_path, "[{team: TK}]")
+
+
+def test_env_highlight_overs(monkeypatch, tmp_path):
+    mj = tmp_path / "match.json"
+    mj.write_text(json.dumps({"teams": TEAMS}))
+    monkeypatch.setenv("SRT_URL", "srt://x")
+    monkeypatch.setenv("MATCH_CONFIG_PATH", str(mj))
+    monkeypatch.setenv("HIGHLIGHT_OVERS", '[{"team":"Eagle Thane Strikers","overs":["1-6", 20]}]')
+    assert Settings(_env_file=None).overs_selection == {"Eagle Thane Strikers": frozenset({1, 2, 3, 4, 5, 6, 20})}
+
+
+def test_batting_first_missing_uses_first_team_with_warning(caplog):
+    with caplog.at_level(logging.WARNING):
+        assert batting_order({"teams": TEAMS}) == ("Triumph Knights", "Eagle Thane Strikers")
+    assert "batting_first" in caplog.text
+    assert batting_order({"teams": TEAMS, "batting_first": "Eagle Thane Strikers"}) == (
+        "Eagle Thane Strikers", "Triumph Knights")
+
+
+def test_match_scope_without_ocr_fails_fast():
+    s = Settings(srt_url="srt://x", highlight_scope="match", ocr_available=False, _env_file=None)
+    with pytest.raises(SystemExit, match="HIGHLIGHT_SCOPE=match needs the scoreboard"):
+        s.validate_ocr_setup()
+    Settings(srt_url="srt://x", highlight_scope="powerplay", ocr_available=False, _env_file=None).validate_ocr_setup()
+
+
+def _oclip(etype, t, innings, score, overs, **detail):
+    ev = FusedEvent(etype, t, 0.95, {Source.OCR}, {"score": score, "overs": overs, "innings": innings,
+                                                    "wickets": 1, **detail})
+    return Clip(ev, [(t - 5, t + 5)], Path(f"/tmp/{t}.mp4"))
+
+
+FLT = OversFilter({"Triumph Knights": frozenset(range(1, 7)), "Eagle Thane Strikers": frozenset({1, 2, 20})},
+                  ("Triumph Knights", "Eagle Thane Strikers"))
+
+
+def test_overs_filter_in_match_plan_withholds_and_skips_audit():
+    w1 = _oclip(EventType.WICKET, 101, 1, "6/1", "0.5")                  # over 1 -> kept
+    w2 = _oclip(EventType.WICKET, 181, 1, "94/2", "11.3")                # over 12 -> not selected
+    six = _oclip(EventType.SIX, 200, 1, "100/2", "6.0")                  # over 6 (x.0 = completed over 6)
+    w3 = _oclip(EventType.WICKET, 461, 2, "69/1", "7.4", event_score="31/1", event_overs="2.4")  # gap: ball in over 3
+    win = _oclip(EventType.MATCH_END, 630, 2, "181/5", "19.2")           # over 20 -> kept
+    clips = [w1, w2, six, w3, win]
+    mp = match_plan(clips, 300, _facts(clips, result="181/5"), "t", overs=FLT)
+    chosen = {c.event.id for c, _ in mp.plan.items}
+    assert chosen == {w1.event.id, six.event.id, win.event.id}
+    not_sel = {w["id"] for w in mp.withheld if w["reason"] == "not_selected_over"}
+    assert not_sel == {w2.event.id, w3.event.id}
+    a1, a2 = mp.wicket_audit["innings_1"], mp.wicket_audit["innings_2"]
+    assert a1["wickets_on_board"] == 6 and a1["wickets_in_selected_overs"] == 1 and a1["wickets_clipped"] == 1
+    assert a1["not_selected_over"][0] == "94/2 (11.3 ov)"
+    assert a2["not_selected_over"] == ["31/1 (2.4 ov) [board 69/1]"]     # event_score/event_overs in the text
+    # wickets 3-6 of innings 1 come only from "179/6 (19.5)" (over 20 of TK: not selected) -> not missing
+    assert mp.package_holds == []
+    # without the filter the same clips are all eligible
+    mp_all = match_plan(clips, 300, _facts(clips, result="181/5"), "t", overs=None)
+    assert not any(w["reason"] == "not_selected_over" for w in mp_all.withheld)
+
+
+def test_commentary_call_without_overs_uses_board_over():
+    w1 = _oclip(EventType.WICKET, 101, 1, "6/1", "0.5")
+    call = Clip(FusedEvent(EventType.WICKET, 300, 0.4, {Source.ASR}, {"quote": "gone", "innings": 1}),
+                [(295, 305)], Path("/tmp/c.mp4"))
+    later = _oclip(EventType.FOUR, 290, 1, "150/3", "15.2")              # board before the call: over 16 next
+    clips = [w1, later, call]
+    facts = _facts(clips)
+    assert facts.over_at(300, 1) == 16 and facts.over_at(50, 1) is None
+    mp = match_plan(clips, 300, facts, "t", overs=FLT)
+    assert any(w["id"] == call.event.id and w["reason"] == "not_selected_over" for w in mp.withheld)
+    assert mp.wicket_audit["innings_1"]["wicket_calls_not_on_scoreboard"] == []
+
+
+def test_overs_filter_in_rule_based_plan():
+    a = _oclip(EventType.FOUR, 50, 1, "10/0", "1.3")
+    b = _oclip(EventType.SIX, 150, 1, "60/0", "7.1")
+    toss = Clip(FusedEvent(EventType.TOSS, 5, 0.9, {Source.ASR}, {}), [(0, 8)], Path("/tmp/toss.mp4"))
+    plan = rule_based_plan([toss, a, b], 240, overs=FLT)
+    assert [c.event.id for c, _ in plan.items] == [toss.event.id, a.event.id]
+    assert [(w["id"], w["reason"]) for w in plan.withheld] == [(b.event.id, "not_selected_over")]
+    assert len(rule_based_plan([toss, a, b], 240, overs=None).items) == 3
+
+
+def _innings_end_type():
+    try:
+        return EventType("innings_end")
+    except ValueError:
+        pytest.skip("EventType.INNINGS_END not available yet")
+
+
+def test_innings_end_is_authoritative_for_wickets_on_board():
+    end_t = _innings_end_type()
+    wkts = [_oclip(EventType.WICKET, t, 1, f"{r}/{w}", o) for t, r, w, o in
+            [(101, 6, 1, "0.5"), (181, 94, 2, "11.3"), (234, 116, 3, "14.0"), (287, 157, 4, "18.0"),
+             (340, 177, 5, "19.4"), (362, 179, 6, "19.5")]]
+    facts = _facts(wkts)
+    end = FusedEvent(end_t, 400, 0.95, {Source.OCR}, {"innings": 1, "score": "179/7", "overs": "20.0",
+                                                     "source": "innings_break"})
+    facts = MatchFacts.from_events([c.event for c in wkts] + [end] + [
+        FusedEvent(EventType.INNINGS_START, 432, 0.8, {Source.OCR}, {"innings": 2, "score": "31/0"})])
+    mp = match_plan(list(wkts), 300, facts, "t", overs=None)
+    a1 = mp.wicket_audit["innings_1"]
+    assert a1["wickets_on_board"] == 7 and a1["wickets_clipped"] == 6
+    assert a1["innings_end"]["score"] == "179/7"
+    assert mp.package_holds == ["wicket_missing"]
+    assert "innings 1: 179/7 (20.0 ov) not clipped" in mp.wicket_audit["wicket_missing"]
+    # over 20 of the first innings not selected -> the unseen 7th wicket is not missing
+    mp2 = match_plan(list(wkts), 300, facts, "t", overs=FLT)
+    assert mp2.package_holds == []
+    assert "179/7 (20.0 ov)" in mp2.wicket_audit["innings_1"]["not_selected_over"]

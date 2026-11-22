@@ -71,6 +71,7 @@ async def render(plan: Plan, out_dir: Path, extra: dict | None = None) -> Path |
         "timeout_minimum": {"clips": TIMEOUT_MIN_CLIPS, "seconds": TIMEOUT_MIN_SECONDS,
                             "needs_one_of": ["wicket", "six"]},
         "on_timeout_result": on_timeout_result, "withheld": withheld,
+        "left_out": plan.withheld,          # clips left out on purpose (e.g. not_selected_over)
         "publish_channel_allowed": False,   # until the IPL template + approve step exist
         **(extra or {}),
         "clips": manifest,
@@ -143,8 +144,10 @@ def crowd_windows(layout: list[str | tuple[float, float]], seconds: dict[str, fl
 
 async def render_match(mp, facts, match: dict, out_dir: Path, work_dir: Path, encoder: str,
                        size: tuple[int, int], fps: float, extra: dict | None = None,
-                       covering: Callable[[float, float], list] | None = None) -> Path | None:
-    """`covering(t0, t1)` -> ingest segments (SegmentBuffer.covering): source of the cards' crowd bed."""
+                       covering: Callable[[float, float], list] | None = None,
+                       audio_rate: int | None = None) -> Path | None:
+    """`covering(t0, t1)` -> ingest segments (SegmentBuffer.covering): source of the cards' crowd bed.
+    `audio_rate`: package audio rate (= the clips' source rate) for the cards, so the -c copy join works."""
     from ..media import render_card
     from .curator import CARD_SECONDS
 
@@ -175,7 +178,7 @@ async def render_match(mp, facts, match: dict, out_dir: Path, work_dir: Path, en
         if name in bed_at:
             segs = covering(bed_at[name], bed_at[name] + sec)
             crowd = ([s.path for s in segs], segs[0].start, bed_at[name]) if segs else None
-        await render_card(lines, sec, path, size, fps, encoder, crowd)
+        await render_card(lines, sec, path, size, fps, encoder, crowd, audio_rate)
         return {"name": name, "path": path, "duration": sec, "text": " / ".join(t for t, _ in lines),
                 "crowd_bed_t": bed_at.get(name)}
 

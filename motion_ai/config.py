@@ -90,6 +90,10 @@ class Settings(BaseSettings):
     match_config_path: Path = Path("config/match.json")
     # For a local file: true = play at real-time speed (like live), false = process as fast as possible
     simulate_live: bool = True
+    # true = append to the recorded runtime files (events/segments) on restart instead of archiving them
+    resume: bool = False
+    # Kill and reconnect ffmpeg when no new segment arrives for this many seconds
+    ingest_stall_seconds: float = 20.0
 
     # OCR (optional)
     ocr_available: bool = False

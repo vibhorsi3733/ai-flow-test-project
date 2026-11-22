@@ -22,7 +22,7 @@ from pathlib import Path
 
 import numpy as np
 
-from .media import _run, probe
+from .media import _run, probe, probe_async
 
 log = logging.getLogger(__name__)
 
@@ -125,7 +125,7 @@ async def gate(manifest_path: Path, clip_dir: Path, covering, source: dict) -> d
             rows.append(row)
             log.info("Quality %s: VMAF %.2f (p5 %.2f) SSIM %s", c["clip_file"], row["vmaf_mean"], row["vmaf_p5"], row["ssim"])
 
-    out = probe(video)
+    out = await probe_async(video, cache=False)
     exp_w = min(source.get("width", 1920), 1920)
     exp_h = min(source.get("height", 1080), 1080)
     checks = {

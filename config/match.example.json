@@ -1,6 +1,7 @@
 {
   "match": "MI vs CSK",
   "venue": "Wankhede Stadium, Mumbai",
+  "batting_first": "MI",
   "teams": {
     "MI": ["Rohit Sharma", "Ishan Kishan", "Suryakumar Yadav", "Hardik Pandya", "Jasprit Bumrah"],
     "CSK": ["Ruturaj Gaikwad", "Shivam Dube", "MS Dhoni", "Ravindra Jadeja", "Matheesha Pathirana"]

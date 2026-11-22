@@ -43,7 +43,8 @@ async def replay(settings: Settings, plan_only: bool) -> None:
     buffer.segments = load_segments(settings.work_dir)
     buffer.closed = True
     fused, clip_events, pp_end = fuse_recorded(settings)
-    cutter = ClipCutter(buffer, settings.work_dir / "clips", settings.video_encoder)
+    cutter = ClipCutter(buffer, settings.work_dir / "clips", settings.video_encoder,
+                         match_config=settings.match_config_path)
     plans = [c for c in [await cutter.plan(ev) for ev in clip_events] if c]
 
     if plan_only:

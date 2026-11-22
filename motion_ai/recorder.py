@@ -73,6 +73,7 @@ class Recorder:
         self.archived = None if resume else archive_previous(work_dir)
         for p in (self.events_path, self.segments_path):
             p.touch()   # append mode: never truncate
+            _end_with_newline(p)   # a crash mid-write left a torn line: don't glue the next record onto it
 
     def event(self, e: Event) -> None:
         with self.events_path.open("a") as f:
@@ -81,6 +82,15 @@ class Recorder:
     def segment(self, s: Segment) -> None:
         with self.segments_path.open("a") as f:
             f.write(json.dumps(segment_to_dict(s)) + "\n")
+
+
+def _end_with_newline(path: Path) -> None:
+    if path.stat().st_size == 0:
+        return
+    with path.open("rb+") as f:
+        f.seek(-1, 2)
+        if f.read(1) != b"\n":
+            f.write(b"\n")
 
 
 def _lines(path: Path) -> list[str]:

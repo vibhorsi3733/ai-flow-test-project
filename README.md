@@ -50,8 +50,29 @@ Requires `ffmpeg` built with SRT support on PATH, and an NVIDIA GPU for Whisper 
 * Budget (`HIGHLIGHT_TARGET_SECONDS`, cards included, hard max 360 s): every wicket and the winning runs are always in;
   the rest is split 50/50 by innings (sixes, then fours from the last over back). Every dropped clip is listed in
   the manifest `withheld[]` with its reason.
+* Needs `OCR_AVAILABLE=true`: only scoreboard-confirmed boundaries/wickets are shown, so startup fails without OCR.
 * Cards show a number only from a confirmed read; `wicket_audit` compares wickets on the scoreboard with wickets
-  clipped per innings, and any shortfall holds the package (`wicket_missing`).
+  clipped per innings, and any shortfall holds the package (`wicket_missing`, naming each score not clipped).
+  A confirmed end-of-innings read (`innings_end`, e.g. 179/7) is authoritative for `wickets_on_board`, so a
+  last-ball wicket that never showed as a score change is still named ("innings 1: 179/7 (20.0 ov) not clipped").
+
+## Selected overs (`HIGHLIGHT_OVERS`)
+
+Only some overs of each batting team, in both scopes. Empty/unset = every over.
+
+```bash
+HIGHLIGHT_OVERS=[{"team":"Triumph Knights","overs":"1-6"},{"team":"Eagle Thane Strikers","overs":[1,2,"16-20"]}]
+```
+
+* `overs`: an `"a-b"` range, a list of overs, or a mix (`["1-6", 20]`), each 1..20. A team not listed keeps all overs.
+* Team names are checked against `config/match.json` `teams` at startup (unknown name = clear error). Innings 1 is
+  batted by `"batting_first"` (add it to match.json, e.g. `"batting_first": "Triumph Knights"`; if missing, the
+  first team key is used and a warning is logged), innings 2 by the other team.
+* Over of a ball = from the scoreboard `o.b` at the ball (`event_overs`, else `overs`): `o.b` with b > 0 is over
+  o+1 (`0.1` -> 1, `5.6` -> 6), `o.0` is over o (`6.0` -> 6, the ball that completed it). A commentary-only clip
+  takes the next ball after the last board reading. Toss and innings-start clips are never filtered.
+* Clips outside the selection go to `withheld[]` with reason `not_selected_over`; wickets outside it are listed in
+  `wicket_audit.innings_N.not_selected_over` and never count as missing.
 * Cards carry a soft crowd bed from the match's own feed (no dead air): back-to-back cards share one stretch taken
   right after the previous clip (the reaction), or just before the first clip for the opening cards; band-limited
   to 80-400 Hz so commentary is only a murmur, normalised to -36 LUFS (~16 dB under the programme), 0.4 s fades.

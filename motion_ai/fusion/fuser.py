@@ -45,6 +45,70 @@ RUN_OUT_RX = re.compile(r"run[\s-]?out|direct hit", re.I)
 REVIEW_RX = re.compile(r"review|third umpire|decision pending|upstairs", re.I)
 
 
+# ---------------------------------------------------------------------------------------------------------
+# Score AT the dismissal (caption check report, scratchpad/caption_check/report.md)
+#
+# The demo source is an edited highlights video: balls between dismissals are cut, so the scoreboard change
+# that confirms a wicket can belong to a ball several deliveries LATER ("gap" change). The live dismissal is
+# shown right after the PREVIOUS change, with the bar still showing that previous state (catch 432-439 over
+# "31-0 2.4"; the bar jumps to 69-1 7.4 at 461). Rules:
+#   gap wicket, prev_score/prev_overs known -> wicket on the next legal ball with no runs:
+#       event_score = prev runs / prev wkts+1, event_overs = next ball (ball 6 -> next over .1),
+#       score_basis "inferred_next_ball" + hold score_inferred.
+#       Ground truth: 69/1 7.4 <- 31/0 2.4 => 31/1 (2.5); 116/3 14.0 <- 99/2 12.0 => 99/3 (12.1);
+#       157/4 18.0 <- 139/3 16.1 => 139/4 (16.2); 177/5 19.4 <- 177/4 19.2 => 177/5 (19.3).
+#   non-gap wicket whose change is explained by ONE delivery (runs +0, wickets +1) -> the board is the
+#       score at the dismissal (score_basis "board").
+#   anything else (runs moved with the wicket, two wickets in one change, gap without prev_score) -> the
+#       score cannot be inferred reliably: score_basis "unknown", no score in the caption, hold score_inferred.
+#       Evidence: 179/6 19.5 <- 177/5 19.4 was a run-out off a WIDE (178/6 19.4) + another wide + a dot.
+# ---------------------------------------------------------------------------------------------------------
+def parse_score(score) -> tuple[int, int] | None:
+    """'31/0' -> (31, 0)."""
+    m = re.fullmatch(r"\s*(\d+)\s*[/-]\s*(\d+)\s*", str(score or ""))
+    return (int(m.group(1)), int(m.group(2))) if m else None
+
+
+def next_ball(overs) -> str | None:
+    """Over notation of the next legal ball: '2.4' -> '2.5', '12.0' -> '12.1', '11.6' -> '12.1'."""
+    m = re.fullmatch(r"\s*(\d+)(?:\.(\d))?\s*", str(overs or ""))
+    if not m:
+        return None
+    o, b = int(m.group(1)), int(m.group(2) or 0)
+    return f"{o + 1}.1" if b >= 6 else f"{o}.{b + 1}"
+
+
+def dismissal_score(detail: dict) -> dict:
+    """Fields to merge into a scoreboard-confirmed wicket's detail (see rules above)."""
+    board = parse_score(detail.get("score"))
+    if board is None:
+        return {}
+    prev = parse_score(detail.get("prev_score"))
+    wd = detail.get("wickets") or 1
+    if detail.get("gap"):
+        nb = next_ball(detail.get("prev_overs"))
+        if prev is not None and nb is not None:
+            return {"score_basis": "inferred_next_ball", "event_score": f"{prev[0]}/{prev[1] + 1}",
+                    "event_overs": nb, "event_wicket_no": prev[1] + 1}
+        return {"score_basis": "unknown", "event_wicket_no": prev[1] + 1 if prev else board[1] - (wd - 1)}
+    runs = detail.get("runs")
+    if runs is None and prev is not None:
+        runs = board[0] - prev[0]
+    if not runs and wd == 1:
+        return {"score_basis": "board"}
+    return {"score_basis": "unknown", "event_wicket_no": prev[1] + 1 if prev else board[1] - (wd - 1)}
+
+
+def annotate_dismissal(f: FusedEvent) -> None:
+    """Idempotent: set score_basis / event_score / event_overs on an OCR wicket and hold score_inferred."""
+    if f.type != EventType.WICKET or Source.OCR not in f.sources or "score_basis" in f.detail:
+        return
+    extra = dismissal_score(f.detail)
+    f.detail.update(extra)
+    if extra.get("score_basis") in ("inferred_next_ball", "unknown"):
+        f.hold("score_inferred")
+
+
 class Fuser:
     def __init__(self, ocr_enabled: bool, settle_seconds: float, ocr_lag_seconds: float):
         self.ocr_enabled = ocr_enabled
@@ -76,6 +140,7 @@ class Fuser:
                                     if e.type == anchor.type and lo <= e.t - anchor.t <= hi]
                 self._remove(group)
                 fused = self._fuse(group)
+            self._mark_prev_innings_start(fused)
             if not self._is_duplicate(fused):
                 out.append(fused)
                 self.recent.append(fused)
@@ -145,7 +210,17 @@ class Fuser:
         if (ocr.detail.get("wickets") or 1) >= 2:
             f.hold("multi_wicket_gap")   # two dismissals behind one scoreboard change, only one clip
         self._call_holds(f, calls, quotes)
+        annotate_dismissal(f)
         return f
+
+    def _mark_prev_innings_start(self, f: FusedEvent) -> None:
+        """Flag events whose previous scoreboard change is the innings-start read. That read is confirmed only
+        after 6 reads over >= 3 s, so the board was on screen earlier (31/0 bar visible from 431.3, read 433.0;
+        the 69/1 dismissal ball's run-up starts 432.1) and the clip planner must lead in further."""
+        prev = f.detail.get("prev_change_t")
+        if prev is not None and any(r.type == EventType.INNINGS_START and r.detail.get("confirm_t") is not None
+                                    and abs(r.detail["confirm_t"] - prev) < 0.05 for r in self.recent):
+            f.detail["prev_is_innings_start"] = True
 
     def _owner(self, call: Event) -> Event | None:
         """The OCR wicket this commentary call precedes (call after that wicket's previous scoreboard change)."""

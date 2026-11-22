@@ -449,8 +449,10 @@ def wicket_audit(facts: MatchFacts, i: int, clipped_ids: set[str], flt: OversFil
         elif end and (s := _score(end)) and s[1] >= n:
             text, over = f"{s[0]}/{n}" + (f" ({end.get('overs')} ov)" if end.get("overs") else ""), \
                 over_number(end.get("overs"))
-        else:
-            text, over = f"wicket {n} ({facts.innings1_last})", None
+        else:                                     # only the last first-innings reading "179/6 (19.5)"
+            last = str(facts.innings1_last or "")
+            m = re.search(r"\(([\d.]+)\)", last)
+            text, over = f"wicket {n} (last reading {last})", over_number(m[1]) if m else None
         (unseen if selected(over) else unseen_not_sel).append(text)
 
     excluded = sum(int(w.get("wickets") or 1) for w in not_sel) + len(unseen_not_sel)
