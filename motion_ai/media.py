@@ -5,6 +5,9 @@ import asyncio
 import logging
 from pathlib import Path
 
+from .branding import (DEFAULT_FONT, active_template, caption_draw, card_background, card_draws, card_fade,
+                       logo_chain, overlay_xy)
+
 log = logging.getLogger(__name__)
 
 
@@ -194,36 +197,49 @@ def crowd_bed_filter(start: float, seconds: float, rate: int = DEFAULT_AUDIO_RAT
             f"afade=t=in:st=0:d={fade:.2f},afade=t=out:st={seconds - fade:.3f}:d={fade:.2f}")
 
 
+def card_video_args(tpl, lines: list[tuple[str, int]], seconds: float, size: tuple[int, int], fps: float,
+                    textfiles: list) -> tuple[list[str], list[str]]:
+    """(input args, filter + map args) for a card's picture. Input 0 = background, 1 = audio, 2 = logo (if any)."""
+    vin = ["-f", "lavfi", "-i", card_background(tpl, size, fps, seconds)]
+    draws = card_draws(tpl, lines, size, textfiles)
+    spec = tpl.logo("card")
+    if not spec:
+        return vin, ["-vf", ",".join(draws + [card_fade(tpl, seconds)]), "-map", "0:v"]
+    x, y = overlay_xy(spec["position"], tpl.margins)
+    graph = (f"[0:v]{','.join(draws)}[base];{logo_chain(spec, '2:v', 'lg')};"
+             f"[base][lg]overlay=x={x}:y={y}:shortest=1,{card_fade(tpl, seconds)}[vout]")
+    return vin, ["-filter_complex", graph, "-map", "[vout]"]
+
+
 async def render_card(lines: list[tuple[str, int]], seconds: float, out: Path, size: tuple[int, int],
                       fps: float, encoder: str = "libx264",
                       crowd: tuple[list[Path], float, float] | None = None,
-                      audio_rate: int | None = None) -> Path:
+                      audio_rate: int | None = None, template=None) -> Path:
     """Full-screen text card (title / innings / result), same encode as the clips.
 
     Audio: a soft crowd bed from the match feed when `crowd` = (segments, base, t0) is given (segments cover
     stream time [t0, t0 + seconds], base = stream time of segments[0]); silence otherwise or if reading it fails.
     `audio_rate`: the package rate (default: source_audio_rate, pinned from the first segment) so the -c copy
-    join with the clips works; the crowd bed and the silent anullsrc both use it."""
+    join with the clips works; the crowd bed and the silent anullsrc both use it.
+    `template`: branding (colours, font, logo; default: the active config/template[.example].json)."""
+    tpl = template or active_template()
     out.parent.mkdir(parents=True, exist_ok=True)
-    w, h = size
-    total_h = sum(fs * 1.5 for _, fs in lines)
-    y = (h - total_h) / 2
-    draws = []
-    for i, (text, fs) in enumerate(lines):
+    tfs = []
+    for i, (text, _) in enumerate(lines):
         tf = out.with_suffix(f".l{i}.txt")
         tf.write_text(text, encoding="utf-8")
-        draws.append(f"drawtext=fontfile={FONT}:textfile='{tf}':fontsize={fs}:fontcolor=white:"
-                     f"x=(w-text_w)/2:y={y:.0f}")
-        y += fs * 1.5
-    vf = ",".join(draws + [f"fade=t=in:st=0:d=0.3,fade=t=out:st={max(0.0, seconds - 0.3):.2f}:d=0.3"])
+        tfs.append(tf)
+    video_in, video_args = card_video_args(tpl, lines, seconds, size, fps, tfs)
 
     rate = audio_rate or await source_audio_rate(crowd[0][0] if crowd and crowd[0] else None)
+
+    logo_in = ["-loop", "1", "-i", tpl.logo_file] if tpl.logo("card") else []
 
     async def encode(audio_in: list[str], af: list[str]) -> None:
         await _run([
             "ffmpeg", "-hide_banner", "-loglevel", "error", "-y",
-            "-f", "lavfi", "-i", f"color=c=0x0b1d3a:s={w}x{h}:r={fps:g}:d={seconds}", *audio_in,
-            "-vf", vf, *af, "-t", f"{seconds}", "-map", "0:v", "-map", "1:a",
+            *video_in, *audio_in, *logo_in,
+            *video_args, *af, "-t", f"{seconds}", "-map", "1:a",
             *video_opts(encoder), *audio_opts(rate), "-movflags", "+faststart", str(out)])
 
     silence = ["-f", "lavfi", "-i", f"anullsrc=r={rate}:cl=stereo"]
@@ -319,7 +335,7 @@ async def loudness(segments: list[Path], base: float, t0: float, t1: float, tmp:
             for i in range(0, max(0, len(pcm) - w + 1), s)]
 
 
-FONT = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
+FONT = DEFAULT_FONT   # kept for callers; styling now comes from motion_ai.branding
 
 
 def video_start_pts(path: Path) -> float | None:
@@ -388,10 +404,13 @@ async def continuous_input(segments: list[Path], tmp_dir: Path, tag: str) -> tup
 
 async def render_clip(segments: list[Path], base: float, ranges: list[tuple[float, float]], out: Path,
                       caption: str | None = None, caption_offset: float = 0.0,
-                      encoder: str = "libx264", fade: float = 0.25, audio_rate: int | None = None) -> Path:
+                      encoder: str = "libx264", fade: float = 0.25, audio_rate: int | None = None,
+                      template=None) -> Path:
     """One ffmpeg pass: trim each range, bake 0.25s audio fades at every clip edge and join, concat,
     burn in the caption, encode once (no AAC gaps or clicks at joins). Audio at the source rate
-    (`audio_rate`, default source_audio_rate pinned from the first segment) — no resample."""
+    (`audio_rate`, default source_audio_rate pinned from the first segment) — no resample.
+    Caption styling / optional corner logo bug come from `template` (default: the active branding template)."""
+    tpl = template or active_template()
     out.parent.mkdir(parents=True, exist_ok=True)
     rate = audio_rate or await source_audio_rate(segments[0])
     in_args, t_in, lst = await continuous_input(segments, out.parent, out.stem)
@@ -409,9 +428,17 @@ async def render_clip(segments: list[Path], base: float, ranges: list[tuple[floa
     if caption:
         txt = out.with_suffix(".caption.txt")
         txt.write_text(caption, encoding="utf-8")
-        vchain += (f",drawtext=fontfile={FONT}:textfile='{txt}':fontsize=72:fontcolor=white:"
-                   f"borderw=4:bordercolor=black:x=(w-text_w)/2:y=h*0.72:enable='gte(t,{caption_offset:.2f})'")
-    parts.append(vchain + "[vout]")
+        vchain += "," + caption_draw(tpl, txt, caption_offset)
+    bug = tpl.logo("clip_bug")
+    if bug:
+        x, y = overlay_xy(bug["position"], tpl.margins)
+        logo_idx = in_args.count("-i")
+        in_args = [*in_args, "-loop", "1", "-i", tpl.logo_file]
+        parts.append(vchain + "[vcap]")
+        parts.append(logo_chain(bug, f"{logo_idx}:v", "bug"))
+        parts.append(f"[vcap][bug]overlay=x={x}:y={y}:shortest=1[vout]")
+    else:
+        parts.append(vchain + "[vout]")
     try:
         await _run([
             "ffmpeg", "-hide_banner", "-loglevel", "error", "-y",
