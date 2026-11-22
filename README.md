@@ -1,5 +1,77 @@
 # Motion-ai — IPL live highlights (toss → end of powerplay, or the full match)
 
+Turns a live cricket video feed into a ready-to-review highlights video, with no data feed: everything is read
+from the broadcast itself (picture, commentary, crowd).
+
+## How it works
+
+```mermaid
+flowchart TD
+    SRC["Live feed: SRT stream<br/>(or a recorded file for testing)"] --> ING["1. Ingest<br/>ffmpeg → 2 s segments, no re-encode"]
+    ING --> BUF[("2. Rolling buffer<br/>+ recorder: segments.jsonl / events.jsonl")]
+    BUF --> AUD["3a. Crowd loudness<br/>excitement peaks"]
+    BUF --> ASR["3b. Commentary<br/>Whisper speech-to-text → Claude extracts events"]
+    BUF --> OCR["3c. Scoreboard OCR (optional)<br/>PaddleOCR reads score, overs, target, innings total"]
+    AUD --> FUS["4. Fuser<br/>scoreboard confirms · commentary anchors · crowd supports"]
+    ASR --> FUS
+    OCR --> FUS
+    FUS --> PLAN["5. Clip planner<br/>camera cuts, crowd roar, live dismissal + replay, caps"]
+    PLAN --> CUR["6. Curator<br/>every wicket kept, length budget, team/over filter, wicket audit"]
+    CUR --> REN["7. Renderer<br/>one encode, cards with crowd bed, peak limiter"]
+    REN --> PKG[/"8. Package: .mp4 + .srt + manifest.json"/]
+    PKG --> QG{"9. Quality gate<br/>VMAF / SSIM vs source"}
+    QG --> APR["10. Human approval screen<br/>python -m motion_ai.approve"]
+    APR --> PUB(["Publish: blocked until a rights-cleared feed<br/>(publish_channel_allowed = false)"])
+```
+
+### Steps, and why each one exists
+
+1. **Ingest (SRT → 2-second segments).** ffmpeg copies the stream into short `.ts` files without re-encoding.
+   *Why:* clips can be cut while the match is still live, the picture is never degraded before the single
+   final encode, and a dropped feed reconnects on its own (stall watchdog) without losing what was recorded.
+2. **Buffer + recorder.** Segments and every detected event are written to `runtime*/`.
+   *Why:* a crash or restart resumes instead of starting over, and rules can be changed and re-checked in
+   seconds with `python -m motion_ai.replay --plan-only` instead of re-processing the whole match.
+3. **Three independent detectors read the same segments in parallel.**
+   - *Crowd loudness* finds roars. *Why:* cheap, instant, and marks the exact second something happened.
+   - *Commentary*: Whisper turns speech into text, Claude turns the text into events (wicket, six, review…);
+     keyword rules are the fallback. *Why:* commentators name what happened, including run-outs and reviews
+     that the scoreboard alone cannot explain.
+   - *Scoreboard OCR* (optional, `OCR_AVAILABLE=true`): reads runs/wickets/overs, the chase target and the
+     innings total. *Why:* the scoreboard is the ground truth: it confirms wickets and boundaries, detects
+     the second innings and the result, and never mishears.
+4. **Fuser.** Combines the three: the scoreboard confirms, commentary anchors the moment, crowd noise supports.
+   Events are only finalised after the slowest detector has caught up. *Why:* each source alone is wrong
+   sometimes (commentary talks over replays; the scoreboard updates late); together they are reliable.
+5. **Clip planner.** Picks each clip's start on a camera cut, ends it when the crowd settles, keeps the live
+   dismissal plus its replay, and skips known bad stretches (e.g. pop-ups). *Why:* clips that start mid-shot
+   or end mid-celebration look automated; broadcast editors cut on cuts.
+6. **Curator.** Keeps every wicket and the winning runs, fills the remaining time with sixes then fours,
+   honours `HIGHLIGHT_OVERS` (chosen overs per team), and audits wickets against the scoreboard.
+   *Why:* a highlights package that misses a wicket is wrong; length must stay inside the target.
+7. **Renderer.** One H.264 encode at near-source quality, title / innings / break / result cards with a crowd
+   bed, true-peak audio limiter. *Why:* one encode = no generation loss; cards give the story; the limiter
+   keeps audio broadcast-safe.
+8. **Package.** `.mp4` + `.srt` + `manifest.json` (every clip, why it was chosen or held, token cost).
+   *Why:* the manifest is the audit trail a human (or a CMS) checks before anything goes out.
+9. **Quality gate.** Every clip is compared with the source (VMAF ≥ 95, SSIM ≥ 0.985, 1080p, bitrate ≥ source).
+   *Why:* "no quality loss" is measured, not assumed; one failing clip holds the whole package.
+10. **Human approval.** Doubtful clips are held, never dropped; a person approves on a local page.
+    *Why:* automation drafts, an editor decides; nothing is published automatically.
+
+## Demo
+
+| | Link |
+|---|---|
+| Source video (YouTube, used as a stand-in for the live SRT feed) | https://www.youtube.com/watch?v=F62YNMNfvA4 |
+| Output highlights video (4:58, 1080p) | _to be added: hosted outside GitHub (file is 230 MB, above GitHub's 100 MB limit)_ |
+
+Demo result: 14 clips + 6 cards, all 12 wickets clipped, quality gate 14/14 (VMAF ≥ 99), true peak −0.8 dBTP.
+The source is a YouTube re-upload of a T20 Mumbai League broadcast: it is for internal demo only and must not be
+published (`source_rights: unverified_youtube_reupload`).
+
+## Overview
+
 Takes a live **SRT** feed and builds a highlights package automatically when the powerplay ends
 (`HIGHLIGHT_SCOPE=powerplay`, default) or when the input ends (`HIGHLIGHT_SCOPE=match`: both innings, with
 title / innings / break / result cards).
