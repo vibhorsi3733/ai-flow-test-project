@@ -61,6 +61,8 @@ flowchart TD
 
 ## Demo
 
+**Note:** Some clip may appear unavailable due to limited AI resource availability within the allocated time, because of Claude's 5-hour usage limit and weekly usage limit.
+
 | | Link |
 |---|---|
 | Source video (YouTube, used as a stand-in for the live SRT feed) | https://www.youtube.com/watch?v=F62YNMNfvA4 |
