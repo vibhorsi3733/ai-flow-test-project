@@ -66,7 +66,8 @@ flowchart TD
 | | Link |
 |---|---|
 | Source video (YouTube, used as a stand-in for the live SRT feed) | https://www.youtube.com/watch?v=F62YNMNfvA4 |
-| Output highlights video (4:58, 1080p — earlier render, before the first-ball clips; the latest 5:16 render is not uploaded yet) | https://wpz5sl5dmq.ufs.sh/f/mY3PNsje3CtySPvycwzWjrVhTieHRfCQABlK7bz9G85gDaWF |
+| Output highlights video (5:16, 1080p, latest: first ball of each innings, 16 clips + 6 cards) | https://wpz5sl5dmq.ufs.sh/f/mY3PNsje3CtyVigat0E0ufgwkM1JhiBF3lQjrzNmZ5Y6d2WX |
+| Earlier render (4:58, before the first-ball clips) | https://wpz5sl5dmq.ufs.sh/f/mY3PNsje3CtySPvycwzWjrVhTieHRfCQABlK7bz9G85gDaWF |
 | All single clips (24 clips, 1080p, 299 MB; 16 used in the latest video) | see [Clips](#clips-all-rendered-clips-hosted-on-uploadthing) below |
 
 Demo result (run `match_highlights_20261123_020437`, `HIGHLIGHT_SCOPE=match`):
