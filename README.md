@@ -66,8 +66,8 @@ flowchart TD
 | | Link |
 |---|---|
 | Source video (YouTube, used as a stand-in for the live SRT feed) | https://www.youtube.com/watch?v=F62YNMNfvA4 |
-| Output highlights video (4:58, 1080p) | https://wpz5sl5dmq.ufs.sh/f/mY3PNsje3CtypowHhcdjIXq7xtJKiBkbU298L4yEwu1gCo6F |
-| All single clips (24 clips, 1080p, 299 MB; 16 used in the video) | _to be added (UploadThing)_ |
+| Output highlights video (4:58, 1080p — earlier render, before the first-ball clips; the latest 5:16 render is not uploaded yet) | https://wpz5sl5dmq.ufs.sh/f/mY3PNsje3CtySPvycwzWjrVhTieHRfCQABlK7bz9G85gDaWF |
+| All single clips (24 clips, 1080p, 299 MB; 16 used in the latest video) | see [Clips](#clips-all-rendered-clips-hosted-on-uploadthing) below |
 
 Demo result (run `match_highlights_20261123_020437`, `HIGHLIGHT_SCOPE=match`):
 
@@ -78,6 +78,35 @@ Demo result (run `match_highlights_20261123_020437`, `HIGHLIGHT_SCOPE=match`):
 | Wickets clipped | all 12 (7 + 5) |
 | Quality gate | 16/16 pass, lowest clip VMAF 99.06 |
 | Video length | 5:16 |
+
+### Clips (all rendered clips, hosted on UploadThing)
+
+| Clip | Innings | Event | Score at the event | Source time | Length | Used in the latest package |
+|---|---|---|---|---|---|---|
+| [000050_innings_start_b94cd16cf83e.mp4](https://wpz5sl5dmq.ufs.sh/f/mY3PNsje3CtySOy4uOWjrVhTieHRfCQABlK7bz9G85gDaWF3) | 1 | First ball | 2/0 | 0:50.1 | 6.51 s | In package at 0:05.0 |
+| [000056_four_7ba325abad23.mp4](https://wpz5sl5dmq.ufs.sh/f/mY3PNsje3CtyR8XfhbIm50g1tUPwTCLBhWmFekJX4sO9aruq) | 1 | Four | 6/0 | 0:56.8 | 11.81 s | Not in package (budget) |
+| [000070_wicket_e6a98e1e9670.mp4](https://wpz5sl5dmq.ufs.sh/f/mY3PNsje3Cty5LFaayG0qDNPOvxUH7zZcbGFMCj3AVJhgTYd) | 1 | Wicket | 6/1 | 1:10.5 | 24.9 s | In package at 0:11.5 |
+| [000130_milestone_f01dccd7ee12.mp4](https://wpz5sl5dmq.ufs.sh/f/mY3PNsje3CtympKm8xje3CtyN6RscG1JuMXdAThYSjvPof4a) | 1 | Milestone | – | 2:10.6 | 12.0 s | Not in package (budget) |
+| [000157_wicket_665b6849ae34.mp4](https://wpz5sl5dmq.ufs.sh/f/mY3PNsje3Cty4wU8MBlCapTFMSDbsocAxmWZKu51Y2Nl6w0y) | 1 | Wicket | 94/2 | 2:37.5 | 24.0 s | In package at 0:36.4 |
+| [000177_four_1bc2e72095a7.mp4](https://wpz5sl5dmq.ufs.sh/f/mY3PNsje3Ctyo2hcptrwEhPaBHi409sX1WG2u876tDApSdMT) | 1 | Four | 99/2 | 2:57.6 | 12.9 s | Not in package (overlap) |
+| [000195_wicket_7bcc8ea5e269.mp4](https://wpz5sl5dmq.ufs.sh/f/mY3PNsje3Ctyzj0ULkM6hVU02wpm3vPc4OEKXrfyWSkNiIZJ) | 1 | Wicket | 99/3 | 3:15.0 | 22.4 s | In package at 1:00.4 |
+| [000281_wicket_dcc61f320595.mp4](https://wpz5sl5dmq.ufs.sh/f/mY3PNsje3CtynRzKu1DcEGi2yI8jbWdr4PLxMTaO169Vo0sl) | 1 | Wicket | 139/4 | 4:41.2 | 20.92 s | In package at 1:22.8 |
+| [000295_four_cca6e2a85409.mp4](https://wpz5sl5dmq.ufs.sh/f/mY3PNsje3Ctyh5LpdHzwhlS8jUpH71JuNabRO3oYZKkAIms5) | 1 | Four | 161/4 | 4:55.6 | 12.42 s | Not in package (budget) |
+| [000313_wicket_033f336c5d1d.mp4](https://wpz5sl5dmq.ufs.sh/f/mY3PNsje3Cty3L41vy6pEPiKquFrebansfv1WDJS59lXg67V) | 1 | Wicket | 177/5 | 5:13.8 | 23.74 s | In package at 1:43.7 |
+| [000356_wicket_40a396d02772.mp4](https://wpz5sl5dmq.ufs.sh/f/mY3PNsje3CtyKRBRNbIx0pfYynNH5MZCa3hXlo7gjAb84kwJ) | 1 | Wicket | 179/6 | 5:56.1 | 18.24 s | In package at 2:07.5 |
+| [000394_wicket_7420cfeb3fc5.mp4](https://wpz5sl5dmq.ufs.sh/f/mY3PNsje3CtyzOe77IM6hVU02wpm3vPc4OEKXrfyWSkNiIZJ) | 1 | Wicket | 179/7 | 6:34.2 | 13.46 s | In package at 2:25.7 |
+| [000397_milestone_179f5c47c22b.mp4](https://wpz5sl5dmq.ufs.sh/f/mY3PNsje3CtydzsKMm3aOyJnqYKX73Qc8u1RiUNMrhCtvPVg) | 1 | Milestone | – | 6:38.0 | 12.0 s | Not in package (budget) |
+| [000412_innings_start_a2f168dddb82.mp4](https://wpz5sl5dmq.ufs.sh/f/mY3PNsje3Ctyyg0TDwH1Jd6lVOQWf7gPexm1UvoH9Tpwa8rI) | 2 | First ball | 31/0 | 6:52.7 | 11.5 s | In package at 2:44.2 |
+| [000444_wicket_f179681da5cb.mp4](https://wpz5sl5dmq.ufs.sh/f/mY3PNsje3CtyEJU5JW7ZIavgl6TwpXzbWyDFKem9C8o74tUj) | 2 | Wicket | 31/1 | 7:24.7 | 25.0 s | In package at 2:55.7 |
+| [000463_four_74086fc13e75.mp4](https://wpz5sl5dmq.ufs.sh/f/mY3PNsje3CtyrkATntQGJteS8raj5D27sMRH6ngWIC3vZzpx) | 2 | Four | 73/1 | 7:43.8 | 8.78 s | Not in package (budget) |
+| [000493_wicket_b0469f9a0ac6.mp4](https://wpz5sl5dmq.ufs.sh/f/mY3PNsje3Cty90r2vbK2RTAI0rzy7tLUDpdY38u6jBOSENko) | 2 | Wicket | 104/2 | 8:13.4 | 20.8 s | In package at 3:20.7 |
+| [000507_wicket_3ae92fd8a7b1.mp4](https://wpz5sl5dmq.ufs.sh/f/mY3PNsje3CtypT4BFpdjIXq7xtJKiBkbU298L4yEwu1gCo6F) | 2 | Wicket | 112/3 | 8:27.1 | 25.0 s | In package at 3:41.5 |
+| [000543_wicket_38b8dd833042.mp4](https://wpz5sl5dmq.ufs.sh/f/mY3PNsje3CtyRaWzBlm50g1tUPwTCLBhWmFekJX4sO9aruqb) | 2 | Wicket | 127/4 | 9:03.6 | 25.0 s | In package at 4:06.5 |
+| [000575_wicket_2c8fe17b6423.mp4](https://wpz5sl5dmq.ufs.sh/f/mY3PNsje3CtybjcOybwz4EyOW1x6YaJ2kfbBecd8AGj5lUTV) | 2 | Wicket | 155/5 | 9:35.6 | 18.96 s | In package at 4:31.5 |
+| [000579_four_d1352d85f6ad.mp4](https://wpz5sl5dmq.ufs.sh/f/mY3PNsje3Cty0MXL8pPhzA6e8toFWvBqMnfZlUKPCYdXHkmh) | 2 | Four | – | 9:39.6 | 10.0 s | Not in package (not on scoreboard) |
+| [000584_six_e41b40ee4831.mp4](https://wpz5sl5dmq.ufs.sh/f/mY3PNsje3CtyVNFcF7NE0ufgwkM1JhiBF3lQjrzNmZ5Y6d2W) | 2 | Six | 177/5 | 9:44.6 | 7.96 s | In package at 4:50.4 |
+| [000602_four_061f13df0617.mp4](https://wpz5sl5dmq.ufs.sh/f/mY3PNsje3Ctyp76849djIXq7xtJKiBkbU298L4yEwu1gCo6F) | 2 | Four | 181/5 | 10:02.8 | 12.97 s | Not in package (same ball as winning runs) |
+| [000602_match_end_b0aca7fdfeee.mp4](https://wpz5sl5dmq.ufs.sh/f/mY3PNsje3Ctyv1w20Zt8pNqDyHbZcoLXwTr9mFh1SxW7jO5B) | 2 | Winning runs | 181/5 | 10:02.8 | 12.97 s | In package at 4:58.4 |
 
 The source is a YouTube re-upload of a T20 Mumbai League broadcast: it is for internal demo only and must not be
 published (`source_rights: unverified_youtube_reupload`).
