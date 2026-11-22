@@ -160,7 +160,7 @@ def caption_for(ev: FusedEvent) -> str:
     else:
         label = {EventType.FOUR: "FOUR", EventType.SIX: "SIX", EventType.REVIEW: "REVIEW",
                  EventType.DROPPED_CATCH: "DROPPED",
-                 EventType.INNINGS_START: "SECOND INNINGS" if d.get("innings", 1) >= 2 else "FIRST OVERS",
+                 EventType.INNINGS_START: "FIRST BALL",
                  EventType.EXCITEMENT: "BIG MOMENT", EventType.MILESTONE: "MILESTONE",
                  EventType.MATCH_END: "WINNING RUNS"}.get(ev.type, ev.type.value.upper())
     if ev.type == EventType.WICKET:
@@ -412,11 +412,41 @@ def _plan(ev: FusedEvent, cuts: list[float], loud: list[tuple[float, float]]):
         R = min(R, end - 3)
         ranges = [[start, end]]
         cap = CAP_BOUNDARY
+    elif ev.type == EventType.INNINGS_START:
+        return _plan_first_ball(ev, cuts)
     else:
         pre, post = WINDOWS.get(ev.type, (6, 6))
         return [(max(0.0, ev.t - pre), ev.t + post)], ev.t
 
     return _trim(ev, ranges, cap, R, start_limit), caption_t
+
+
+# First ball of each innings (mandatory, shown right after the innings card).
+# With a commentary call ("Starting the first ball coming up", 412.72) the delivery follows the call: the clip
+# runs FIRST_BALL_LEN_S from just after it (chase: delivery 413, shot 414, chase + throw 415-421, back at the
+# pitch 422-424). Without a call, the event time is the first board read minus the OCR lag; the first read
+# lags the first delivery by ~10 s (innings 1: run-up 45, delivery 46.2, shot 47-48, read "2-0 0.2" at 56.08),
+# so the clip starts FIRST_BALL_BEFORE_READ_S before the read and ends on the last cut before the read.
+FIRST_BALL_LEN_S = 11.5
+FIRST_BALL_BEFORE_READ_S = 11.0
+FIRST_BALL_MIN_S = 5.0
+
+
+def _plan_first_ball(ev: FusedEvent, cuts: list[float]):
+    d = ev.detail
+    read = d.get("confirm_t")
+    if Source.ASR in ev.sources:
+        start = round(ev.t + 0.2, 2)
+        end = start + FIRST_BALL_LEN_S
+        if read is not None and read > start:
+            end = min(end, read - FRAME)
+    else:
+        read = read if read is not None else ev.t + 6.0
+        start = round(max(0.0, read - FIRST_BALL_BEFORE_READ_S), 2)
+        after = [c for c in cuts if start + FIRST_BALL_MIN_S <= c <= read - 1.0]
+        end = after[0] - FRAME if after else read - 4.0
+    end = round(max(end, start + FIRST_BALL_MIN_S), 2)
+    return [(start, end)], round(min(start + 3.0, end - CAPTION_MIN_S), 2)
 
 
 def _trim(ev: FusedEvent, ranges: list[list[float]], cap: float, R: float, start_limit: float):
@@ -589,6 +619,9 @@ class ClipCutter:
                 confirm = d["confirm_t"]
                 loud_lo = confirm - SHOT_LO
                 lo, hi = min(lo, loud_lo - 9), max(hi, confirm + 1)
+        elif ev.type == EventType.INNINGS_START:
+            read = d.get("confirm_t") or ev.t + 6.0
+            R, lo, hi = ev.t, min(ev.t, read) - FIRST_BALL_BEFORE_READ_S - 2, max(ev.t + FIRST_BALL_LEN_S, read) + 1
         else:
             ranges, cap_t = plan_ranges(ev, [], [], self.avoid)
             return Clip(ev, ranges, self._path(ev), caption_for(ev), cap_t)

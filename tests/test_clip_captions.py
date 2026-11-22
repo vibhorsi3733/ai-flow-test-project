@@ -354,3 +354,42 @@ def test_winning_runs_fold_never_relabels_a_burned_clip(tmp_path):
         me, four = clip(EventType.MATCH_END, path, cap), clip(EventType.FOUR, None, "FOUR")
         mp = match_plan([me, four], 300, MatchFacts(wicket_changes={1: [], 2: []}, innings_end={}), "t", overs=None)
         assert [c for c, _ in mp.plan.items] == [me] and mp.plan.items[0][1] == want and me.caption == want
+
+
+# First ball of each innings (mandatory after the innings card) — real times from the demo source -------------
+def _innings_start(t, confirm, sources, innings):
+    from motion_ai.events import EventType, FusedEvent
+    return FusedEvent(EventType.INNINGS_START, t, 0.8, set(sources),
+                      {"innings": innings, "confirm_t": confirm, "score": "31/0" if innings == 2 else "2/0"})
+
+
+def test_first_ball_with_commentary_call_follows_the_call():
+    """Chase: call "Starting the first ball coming up" 412.72; delivery 413, shot 414, throw ~421, pitch 422-424."""
+    from motion_ai.events import Source
+    from motion_ai.highlights.clips import caption_for, plan_ranges
+    ev = _innings_start(412.72, 433.0, {Source.ASR, Source.OCR}, 2)
+    ranges, cap_t = plan_ranges(ev, [414.86, 422.2, 425.14], [])
+    (a, b), = ranges
+    assert 412.7 < a <= 413.0 and 421.0 <= b < 433.0
+    assert caption_for(ev) == "FIRST BALL" and a <= cap_t <= b - 3.0
+
+
+def test_first_ball_from_board_read_only():
+    """Innings 1: first read "2-0 0.2" at 56.08 (event t = read - 6 s lag); run-up 45, delivery 46.2, shot 47-48."""
+    from motion_ai.events import Source
+    from motion_ai.highlights.clips import plan_ranges
+    ev = _innings_start(50.08, 56.08, {Source.OCR}, 1)
+    ranges, _ = plan_ranges(ev, [46.19, 48.79, 51.63, 57.09], [])
+    (a, b), = ranges
+    assert a <= 45.5 and 48.5 <= b < 56.08
+
+
+def test_first_ball_is_mandatory_in_the_match_plan():
+    from pathlib import Path
+    from motion_ai.events import Source
+    from motion_ai.highlights.clips import Clip
+    from motion_ai.highlights.curator import MatchFacts, match_plan
+    fb = Clip(_innings_start(412.72, 433.0, {Source.ASR, Source.OCR}, 2), [(412.92, 424.42)], Path("/tmp/fb.mp4"),
+              "FIRST BALL", 415.9)
+    mp = match_plan([fb], 20.0, MatchFacts.from_events([fb.event]), "t")   # budget smaller than the clip
+    assert [c.event.id for c, _ in mp.plan.items] == [fb.event.id]

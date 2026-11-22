@@ -323,7 +323,8 @@ def match_plan(clips: list[Clip], target: float, facts: MatchFacts, title: str,
     chosen: list[Clip] = []
 
     def exempt(c: Clip) -> bool:
-        return _must_keep(c) or c.event.type == EventType.MATCH_END
+        # First ball of each innings is mandatory (shown right after the innings card), like every wicket.
+        return _must_keep(c) or c.event.type in (EventType.MATCH_END, EventType.INNINGS_START)
 
 
     def skip(c: Clip, reason: str) -> None:
@@ -365,9 +366,7 @@ def match_plan(clips: list[Clip], target: float, facts: MatchFacts, title: str,
     optional = [c for c in clips if not exempt(c) and c not in unconfirmed
                 and c.event.type not in (EventType.INNINGS_START, EventType.TOSS)]
     for c in clips:
-        if c.event.type == EventType.INNINGS_START:
-            skip(c, "replaced_by_card")
-        elif c in unconfirmed:
+        if c in unconfirmed:
             skip(c, "not_on_scoreboard")   # commentary-only call: never shown without scoreboard confirmation
 
     def rank(c: Clip):

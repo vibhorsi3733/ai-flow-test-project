@@ -68,9 +68,35 @@ flowchart TD
 | Source video (YouTube, used as a stand-in for the live SRT feed) | https://www.youtube.com/watch?v=F62YNMNfvA4 |
 | Output highlights video (4:58, 1080p) | https://wpz5sl5dmq.ufs.sh/f/mY3PNsje3CtypowHhcdjIXq7xtJKiBkbU298L4yEwu1gCo6F |
 
-Demo result: 14 clips + 6 cards, all 12 wickets clipped, quality gate 14/14 (VMAF ≥ 99), true peak −0.8 dBTP.
+Demo result (run `match_highlights_20261123_020437`, `HIGHLIGHT_SCOPE=match`):
+
+| | Result |
+|---|---|
+| Clips | 16 |
+| Cards | 6 |
+| Wickets clipped | all 12 (7 + 5) |
+| Quality gate | 16/16 pass, lowest clip VMAF 99.06 |
+| Video length | 5:16 |
+
 The source is a YouTube re-upload of a T20 Mumbai League broadcast: it is for internal demo only and must not be
 published (`source_rights: unverified_youtube_reupload`).
+
+## Sample output
+
+One run produces three files with the same name in `output/` (`match_highlights_<YYYYMMDD_HHMMSS>.*`). The files
+from a full-match run (`HIGHLIGHT_SCOPE=match`) of the demo source:
+
+| File | What it is |
+|---|---|
+| `match_highlights_20261123_020437.mp4` | **The highlights video.** 5:16, 1920×1080 H.264 + AAC, 242 MB. Six cards (title, innings 1, innings break, innings 2, result, outro) and 16 clips: 12 wickets, 1 six, 2 innings starts and the match end. Not in the repo (too large for GitHub), see [Demo](#demo). |
+| [`match_highlights_20261123_020437.json`](docs/sample_output/match_highlights_20261123_020437.json) | **The package manifest**, used by the approval page and the quality gate. It has the review status and deadline (`status`, `approve_by`, `on_timeout`), each clip (`clips[]`: where it sits in the package, type, caption, score and overs, confidence, hold reasons, source segments), each card (`cards[]`), the clips held back and why (`withheld[]`), a wicket audit per innings (wickets on the scoreboard vs wickets clipped: 7/7 and 5/5 here), match facts (innings scores, target), source and encoder details, rights (`source_rights`, `publish_channel_allowed`) and LLM token usage. |
+| [`match_highlights_20261123_020437.srt`](docs/sample_output/match_highlights_20261123_020437.srt) | **The captions** as a sidecar subtitle file: 16 short cues timed to the package (`FIRST BALL`, `RUN OUT · DIRECT HIT`, `WICKET`, …). Players can show them as subtitles; they are not burned into the video by default. |
+
+The single clips are not in `output/`. They are cut during the match into the clips folder of the runtime directory
+(`runtime_1080/clips/` for this run), one `<match_time>_<type>_<id>.mp4` per clip with a `.json` of its details next to
+it, e.g. `000070_wicket_e6a98e1e9670.mp4`. The manifest's `clips[].clip_file` names the file each clip in the package
+came from. The folder also keeps the candidate clips the curator did not pick (24 cut, 16 used here). Like `output/`,
+it is git-ignored.
 
 ## Overview
 

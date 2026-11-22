@@ -1,0 +1,872 @@
+{
+  "title": "Triumph Knights v Eagle Thane Strikers: Match Highlights",
+  "scope": "match",
+  "status": "hold_for_review",
+  "package_holds": [],
+  "duration": 316.4,
+  "approve_by": "2026-11-23T02:14:42",
+  "on_timeout": "publish_non_held",
+  "timeout_minimum": {
+    "clips": 2,
+    "seconds": 20.0,
+    "needs_one_of": [
+      "wicket",
+      "six"
+    ]
+  },
+  "on_timeout_result": "below_minimum",
+  "held_clip_ids": [
+    "e6a98e1e9670",
+    "665b6849ae34",
+    "7bcc8ea5e269",
+    "dcc61f320595",
+    "033f336c5d1d",
+    "40a396d02772",
+    "7420cfeb3fc5",
+    "f179681da5cb",
+    "b0469f9a0ac6",
+    "3ae92fd8a7b1",
+    "38b8dd833042",
+    "2c8fe17b6423",
+    "e41b40ee4831"
+  ],
+  "withheld": [
+    {
+      "id": "061f13df0617",
+      "type": "four",
+      "match_time_s": 602.8,
+      "innings": 2,
+      "score": "181/5",
+      "reason": "same_ball_as_winning_runs"
+    },
+    {
+      "id": "d1352d85f6ad",
+      "type": "four",
+      "match_time_s": 579.6,
+      "innings": 2,
+      "score": null,
+      "overs": null,
+      "reason": "not_on_scoreboard"
+    },
+    {
+      "id": "1bc2e72095a7",
+      "type": "four",
+      "match_time_s": 177.6,
+      "innings": 1,
+      "score": "99/2",
+      "overs": "12.0",
+      "reason": "overlap"
+    },
+    {
+      "id": "74086fc13e75",
+      "type": "four",
+      "match_time_s": 463.8,
+      "innings": 2,
+      "score": "73/1",
+      "overs": "7.5",
+      "reason": "budget"
+    },
+    {
+      "id": "cca6e2a85409",
+      "type": "four",
+      "match_time_s": 295.6,
+      "innings": 1,
+      "score": "161/4",
+      "overs": "18.1",
+      "reason": "budget"
+    },
+    {
+      "id": "7ba325abad23",
+      "type": "four",
+      "match_time_s": 56.8,
+      "innings": 1,
+      "score": "6/0",
+      "overs": "0.3",
+      "reason": "budget"
+    },
+    {
+      "id": "179f5c47c22b",
+      "type": "milestone",
+      "match_time_s": 398.0,
+      "innings": 1,
+      "score": null,
+      "overs": null,
+      "reason": "budget"
+    },
+    {
+      "id": "f01dccd7ee12",
+      "type": "milestone",
+      "match_time_s": 130.6,
+      "innings": 1,
+      "score": null,
+      "overs": null,
+      "reason": "budget"
+    }
+  ],
+  "wicket_audit": {
+    "innings_1": {
+      "wickets_on_board": 7,
+      "wickets_clipped": 7,
+      "not_clipped": [],
+      "innings_end": {
+        "score": "179/7",
+        "overs": "20.0",
+        "source": "scorecard_footer"
+      },
+      "wicket_calls_not_on_scoreboard": []
+    },
+    "innings_2": {
+      "wickets_on_board": 5,
+      "wickets_clipped": 5,
+      "not_clipped": [],
+      "innings_end": {
+        "score": "181/5",
+        "overs": "19.2",
+        "source": "scorecard_footer"
+      },
+      "wicket_calls_not_on_scoreboard": []
+    }
+  },
+  "facts": {
+    "innings2_start_t": 412.72,
+    "innings1_runs": 179,
+    "innings1_last_read": "179/7 (20.0)",
+    "target_confirmed": 180,
+    "target_matches_innings1": true,
+    "result_score": [
+      181,
+      5
+    ]
+  },
+  "budget_note": null,
+  "publish_channel_allowed": false,
+  "source_rights": "unverified_youtube_reupload",
+  "replayed": true,
+  "llm_usage": {
+    "backend": [],
+    "models": [],
+    "cost_basis": "",
+    "prices_per_mtok": {
+      "claude-opus-5-5": {
+        "input": 4.0,
+        "output": 20.0,
+        "cache_read": 0.2
+      },
+      "claude-sonnet-5-5": {
+        "input": 2.0,
+        "output": 10.0,
+        "cache_read": 0.1
+      },
+      "claude-haiku-5-5": {
+        "input": 0.1,
+        "output": 0.5,
+        "cache_read": 0.1
+      }
+    },
+    "price_notes": [
+      "claude-haiku-5-5 cache read: price unknown, charged at the input price",
+      "cache writes: 1.25x input (5-minute TTL), 2x input (1-hour TTL), standard API multipliers"
+    ],
+    "stages": {},
+    "total": {
+      "calls": 0,
+      "ok": 0,
+      "calls_without_usage": 0,
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "cache_read_input_tokens": 0,
+      "cache_creation_input_tokens": 0,
+      "cost_usd": 0,
+      "cost_complete": true,
+      "latency_s": 0
+    },
+    "calls": [],
+    "run": "replay",
+    "note": "replay: commentary events were read from the recording (no commentary calls); only the curator call was re-run, so this is not the live per-video usage"
+  },
+  "source": {
+    "path": "demo/t20_mumbai_1080p.mp4",
+    "codec": "h264",
+    "profile": "High",
+    "width": 1920,
+    "height": 1080,
+    "video_kbps": 2682,
+    "fps": 25.0,
+    "audio_hz": 44100,
+    "duration": 672.71,
+    "total_kbps": 2816
+  },
+  "encoder_args": [
+    "-c:v",
+    "libx264",
+    "-preset",
+    "slow",
+    "-crf",
+    "17",
+    "-profile:v",
+    "high",
+    "-level",
+    "4.1",
+    "-pix_fmt",
+    "yuv420p",
+    "-g",
+    "50",
+    "-bf",
+    "3",
+    "-colorspace",
+    "bt709",
+    "-color_primaries",
+    "bt709",
+    "-color_trc",
+    "bt709"
+  ],
+  "audio_rate": 44100,
+  "cards": [
+    {
+      "card": "title",
+      "text": "TRIUMPH KNIGHTS v EAGLE THANE STRIKERS / MATCH HIGHLIGHTS",
+      "start_in_package": 0.0,
+      "duration": 3.0,
+      "crowd_bed_t": 40.08
+    },
+    {
+      "card": "innings1",
+      "text": "1st INNINGS / TRIUMPH KNIGHTS",
+      "start_in_package": 3.0,
+      "duration": 2.0,
+      "crowd_bed_t": 43.08
+    },
+    {
+      "card": "break",
+      "text": "INNINGS BREAK / TRIUMPH KNIGHTS  179",
+      "start_in_package": 159.17,
+      "duration": 3.0,
+      "crowd_bed_t": 397.66
+    },
+    {
+      "card": "innings2",
+      "text": "2nd INNINGS / EAGLE THANE STRIKERS / TARGET 180",
+      "start_in_package": 162.17,
+      "duration": 2.0,
+      "crowd_bed_t": 400.66
+    },
+    {
+      "card": "result",
+      "text": "EAGLE THANE STRIKERS WIN / BY 5 WICKETS / 181/5",
+      "start_in_package": 311.36,
+      "duration": 3.0,
+      "crowd_bed_t": 606.54
+    },
+    {
+      "card": "outro",
+      "text": "MATCH HIGHLIGHTS / TRIUMPH KNIGHTS v EAGLE THANE STRIKERS",
+      "start_in_package": 314.36,
+      "duration": 2.0,
+      "crowd_bed_t": 609.54
+    }
+  ],
+  "clips": [
+    {
+      "start_in_package": 5.0,
+      "duration": 6.51,
+      "innings": 1,
+      "type": "innings_start",
+      "caption": "FIRST BALL",
+      "caption_t": 48.08,
+      "caption_in_package": 8.0,
+      "caption_offset_in_clip": 3.0,
+      "segments": [
+        [
+          45.08,
+          51.59
+        ]
+      ],
+      "confidence": 0.7,
+      "hold_reasons": [],
+      "needs_review": false,
+      "sources": [
+        "ocr"
+      ],
+      "score": "2/0",
+      "overs": "0.2",
+      "board_score": "2/0",
+      "board_overs": "0.2",
+      "quotes": [],
+      "match_time_s": 50.1,
+      "clip_file": "000050_innings_start_b94cd16cf83e.mp4",
+      "id": "b94cd16cf83e"
+    },
+    {
+      "start_in_package": 11.51,
+      "duration": 24.9,
+      "innings": 1,
+      "type": "wicket",
+      "caption": "RUN OUT · DIRECT HIT",
+      "caption_t": 101.28,
+      "caption_in_package": 29.41,
+      "caption_offset_in_clip": 17.9,
+      "segments": [
+        [
+          65.6,
+          73.5
+        ],
+        [
+          91.28,
+          108.28
+        ]
+      ],
+      "confidence": 0.95,
+      "hold_reasons": [
+        "slow_confirm",
+        "run_out",
+        "review"
+      ],
+      "needs_review": true,
+      "sources": [
+        "asr",
+        "ocr"
+      ],
+      "score": "6/1",
+      "overs": "0.5",
+      "board_score": "6/1",
+      "board_overs": "0.5",
+      "score_basis": "board",
+      "quotes": [
+        "Bowling, and that's us! Direct hit!",
+        "And that could be the first wicket down there.",
+        "Our review for runout at the Bolaal friend. Can you give me your first angle please?",
+        "Quick silver work in the field and that's the first wicket down for prime knights.",
+        "I think Sidhaant was batting well, but unfortunately we run out."
+      ],
+      "match_time_s": 70.5,
+      "clip_file": "000070_wicket_e6a98e1e9670.mp4",
+      "id": "e6a98e1e9670"
+    },
+    {
+      "start_in_package": 36.41,
+      "duration": 24.0,
+      "innings": 1,
+      "type": "wicket",
+      "caption": "WICKET",
+      "caption_t": 181.1,
+      "caption_in_package": 57.41,
+      "caption_offset_in_clip": 21.0,
+      "segments": [
+        [
+          149.5,
+          160.5
+        ],
+        [
+          171.1,
+          184.1
+        ]
+      ],
+      "confidence": 0.95,
+      "hold_reasons": [
+        "slow_confirm",
+        "over_cap"
+      ],
+      "needs_review": true,
+      "sources": [
+        "asr",
+        "ocr"
+      ],
+      "score": "94/2",
+      "overs": "11.3",
+      "board_score": "94/2",
+      "board_overs": "11.3",
+      "score_basis": "board",
+      "quotes": [
+        "Kulkarni. His input should be vital for the side. Thane Strikers, this is gone.",
+        "Straight to hand and that's the wicket they were looking for. That's the breakthrough. Jigar gone."
+      ],
+      "match_time_s": 157.5,
+      "clip_file": "000157_wicket_665b6849ae34.mp4",
+      "id": "665b6849ae34"
+    },
+    {
+      "start_in_package": 60.41,
+      "duration": 22.4,
+      "innings": 1,
+      "type": "wicket",
+      "caption": "RUN OUT · DIRECT HIT",
+      "caption_t": 224.52,
+      "caption_in_package": 73.03,
+      "caption_offset_in_clip": 12.62,
+      "segments": [
+        [
+          185.52,
+          198.04
+        ],
+        [
+          224.42,
+          234.3
+        ]
+      ],
+      "confidence": 0.75,
+      "hold_reasons": [
+        "slow_confirm",
+        "run_out",
+        "review",
+        "score_inferred"
+      ],
+      "needs_review": true,
+      "sources": [
+        "asr",
+        "ocr"
+      ],
+      "score": "99/3",
+      "overs": "12.1",
+      "board_score": "116/3",
+      "board_overs": "14.0",
+      "score_basis": "inferred_next_ball",
+      "quotes": [
+        "We have a review for a runout at the strikers end.",
+        "And the third umpire's decision. There comes, that's the end and that's very unfortunate.",
+        "He is batting well. Parikshit unfortunately run out there.",
+        "You can see this, trying to seal that single and a direct hit, resulting in the run out.",
+        "And as for the DRS, front on coming."
+      ],
+      "match_time_s": 195.0,
+      "clip_file": "000195_wicket_7bcc8ea5e269.mp4",
+      "id": "7bcc8ea5e269"
+    },
+    {
+      "start_in_package": 82.81,
+      "duration": 20.92,
+      "innings": 1,
+      "type": "wicket",
+      "caption": "WICKET",
+      "caption_t": 274.36,
+      "caption_in_package": 91.01,
+      "caption_offset_in_clip": 8.2,
+      "segments": [
+        [
+          266.16,
+          287.08
+        ]
+      ],
+      "confidence": 0.75,
+      "hold_reasons": [
+        "no_call_anchor",
+        "score_inferred",
+        "no_cut_snap"
+      ],
+      "needs_review": true,
+      "sources": [
+        "ocr"
+      ],
+      "score": "139/4",
+      "overs": "16.2",
+      "board_score": "157/4",
+      "board_overs": "18.0",
+      "score_basis": "inferred_next_ball",
+      "quotes": [],
+      "match_time_s": 281.2,
+      "clip_file": "000281_wicket_dcc61f320595.mp4",
+      "id": "dcc61f320595"
+    },
+    {
+      "start_in_package": 103.73,
+      "duration": 23.74,
+      "innings": 1,
+      "type": "wicket",
+      "caption": "WICKET",
+      "caption_t": 320.0,
+      "caption_in_package": 111.93,
+      "caption_offset_in_clip": 8.2,
+      "segments": [
+        [
+          311.8,
+          335.54
+        ]
+      ],
+      "confidence": 0.75,
+      "hold_reasons": [
+        "slow_confirm",
+        "score_inferred",
+        "no_cut_snap",
+        "no_call_anchor"
+      ],
+      "needs_review": true,
+      "sources": [
+        "asr",
+        "ocr"
+      ],
+      "score": "177/5",
+      "overs": "19.3",
+      "board_score": "177/5",
+      "board_overs": "19.4",
+      "score_basis": "inferred_next_ball",
+      "quotes": [
+        "29 of those have come from Suryakumar Yadav. That's got to be out. That's a nice thick edge."
+      ],
+      "match_time_s": 313.8,
+      "clip_file": "000313_wicket_033f336c5d1d.mp4",
+      "id": "033f336c5d1d"
+    },
+    {
+      "start_in_package": 127.47,
+      "duration": 18.24,
+      "innings": 1,
+      "type": "wicket",
+      "caption": "RUN OUT",
+      "caption_t": 358.3,
+      "caption_in_package": 141.71,
+      "caption_offset_in_clip": 14.24,
+      "segments": [
+        [
+          339.22,
+          348.78
+        ],
+        [
+          353.62,
+          362.3
+        ]
+      ],
+      "confidence": 0.95,
+      "hold_reasons": [
+        "no_call_anchor",
+        "run_out",
+        "score_inferred"
+      ],
+      "needs_review": true,
+      "sources": [
+        "asr",
+        "ocr"
+      ],
+      "score": null,
+      "overs": null,
+      "board_score": "179/6",
+      "board_overs": "19.5",
+      "score_basis": "unknown",
+      "quotes": [
+        "Brilliantly taken by the keeper. Also going to result in another runout."
+      ],
+      "match_time_s": 356.1,
+      "clip_file": "000356_wicket_40a396d02772.mp4",
+      "id": "40a396d02772"
+    },
+    {
+      "start_in_package": 145.71,
+      "duration": 13.46,
+      "innings": 1,
+      "type": "wicket",
+      "caption": "RUN OUT",
+      "caption_t": 394.66,
+      "caption_in_package": 156.17,
+      "caption_offset_in_clip": 10.46,
+      "segments": [
+        [
+          384.2,
+          397.66
+        ]
+      ],
+      "confidence": 0.95,
+      "hold_reasons": [
+        "run_out",
+        "no_cut_snap"
+      ],
+      "needs_review": true,
+      "sources": [
+        "asr",
+        "ocr"
+      ],
+      "score": "179/7",
+      "overs": "20.0",
+      "board_score": "179/7",
+      "board_overs": "20.0",
+      "score_basis": "board",
+      "quotes": [
+        "Impressive. And one more easy run out. How many run outs have you..."
+      ],
+      "match_time_s": 394.2,
+      "clip_file": "000394_wicket_7420cfeb3fc5.mp4",
+      "id": "7420cfeb3fc5"
+    },
+    {
+      "start_in_package": 164.17,
+      "duration": 11.5,
+      "innings": 2,
+      "type": "innings_start",
+      "caption": "FIRST BALL",
+      "caption_t": 415.92,
+      "caption_in_package": 167.17,
+      "caption_offset_in_clip": 3.0,
+      "segments": [
+        [
+          412.92,
+          424.42
+        ]
+      ],
+      "confidence": 0.8,
+      "hold_reasons": [],
+      "needs_review": false,
+      "sources": [
+        "asr",
+        "ocr"
+      ],
+      "score": "31/0",
+      "overs": "2.4",
+      "board_score": "31/0",
+      "board_overs": "2.4",
+      "quotes": [
+        "Starting the first ball coming up."
+      ],
+      "match_time_s": 412.7,
+      "clip_file": "000412_innings_start_a2f168dddb82.mp4",
+      "id": "a2f168dddb82"
+    },
+    {
+      "start_in_package": 175.67,
+      "duration": 25.0,
+      "innings": 2,
+      "type": "wicket",
+      "caption": "WICKET",
+      "caption_t": 441.0,
+      "caption_in_package": 185.17,
+      "caption_offset_in_clip": 9.5,
+      "segments": [
+        [
+          431.5,
+          456.5
+        ]
+      ],
+      "confidence": 0.75,
+      "hold_reasons": [
+        "score_inferred",
+        "no_cut_snap",
+        "no_call_anchor"
+      ],
+      "needs_review": true,
+      "sources": [
+        "asr",
+        "ocr"
+      ],
+      "score": "31/1",
+      "overs": "2.5",
+      "board_score": "69/1",
+      "board_overs": "7.4",
+      "score_basis": "inferred_next_ball",
+      "quotes": [
+        "I'm in the middle of losing a wicket in doing so.",
+        "Power play, they were going pretty much neck and neck and that is an edge."
+      ],
+      "match_time_s": 444.7,
+      "clip_file": "000444_wicket_f179681da5cb.mp4",
+      "id": "f179681da5cb"
+    },
+    {
+      "start_in_package": 200.67,
+      "duration": 20.8,
+      "innings": 2,
+      "type": "wicket",
+      "caption": "WICKET",
+      "caption_t": 481.36,
+      "caption_in_package": 208.87,
+      "caption_offset_in_clip": 8.2,
+      "segments": [
+        [
+          473.16,
+          493.96
+        ]
+      ],
+      "confidence": 0.75,
+      "hold_reasons": [
+        "score_inferred",
+        "no_cut_snap",
+        "no_call_anchor"
+      ],
+      "needs_review": true,
+      "sources": [
+        "asr",
+        "ocr"
+      ],
+      "score": "104/2",
+      "overs": "11.3",
+      "board_score": "112/2",
+      "board_overs": "12.2",
+      "score_basis": "inferred_next_ball",
+      "quotes": [
+        "And holds out into the deep on the offside."
+      ],
+      "match_time_s": 493.4,
+      "clip_file": "000493_wicket_b0469f9a0ac6.mp4",
+      "id": "b0469f9a0ac6"
+    },
+    {
+      "start_in_package": 221.47,
+      "duration": 25.0,
+      "innings": 2,
+      "type": "wicket",
+      "caption": "WICKET",
+      "caption_t": 510.52,
+      "caption_in_package": 229.67,
+      "caption_offset_in_clip": 8.2,
+      "segments": [
+        [
+          502.32,
+          527.32
+        ]
+      ],
+      "confidence": 0.75,
+      "hold_reasons": [
+        "slow_confirm",
+        "score_inferred",
+        "no_cut_snap",
+        "no_call_anchor"
+      ],
+      "needs_review": true,
+      "sources": [
+        "asr",
+        "ocr"
+      ],
+      "score": "112/3",
+      "overs": "12.3",
+      "board_score": "127/3",
+      "board_overs": "14.2",
+      "score_basis": "inferred_next_ball",
+      "quotes": [
+        "In North-the-distance and hanging on it, wait for dear life."
+      ],
+      "match_time_s": 507.1,
+      "clip_file": "000507_wicket_3ae92fd8a7b1.mp4",
+      "id": "3ae92fd8a7b1"
+    },
+    {
+      "start_in_package": 246.47,
+      "duration": 25.0,
+      "innings": 2,
+      "type": "wicket",
+      "caption": "WICKET",
+      "caption_t": 541.12,
+      "caption_in_package": 254.67,
+      "caption_offset_in_clip": 8.2,
+      "segments": [
+        [
+          532.92,
+          557.92
+        ]
+      ],
+      "confidence": 0.75,
+      "hold_reasons": [
+        "score_inferred",
+        "no_cut_snap",
+        "no_call_anchor"
+      ],
+      "needs_review": true,
+      "sources": [
+        "asr",
+        "ocr"
+      ],
+      "score": "127/4",
+      "overs": "14.3",
+      "board_score": "155/4",
+      "board_overs": "17.4",
+      "score_basis": "inferred_next_ball",
+      "quotes": [
+        "Superbly held there."
+      ],
+      "match_time_s": 543.6,
+      "clip_file": "000543_wicket_38b8dd833042.mp4",
+      "id": "38b8dd833042"
+    },
+    {
+      "start_in_package": 271.47,
+      "duration": 18.96,
+      "innings": 2,
+      "type": "wicket",
+      "caption": "WICKET",
+      "caption_t": 573.88,
+      "caption_in_package": 282.87,
+      "caption_offset_in_clip": 11.4,
+      "segments": [
+        [
+          562.48,
+          581.44
+        ]
+      ],
+      "confidence": 0.75,
+      "hold_reasons": [
+        "no_call_anchor",
+        "score_inferred",
+        "no_cut_snap"
+      ],
+      "needs_review": true,
+      "sources": [
+        "ocr"
+      ],
+      "score": "155/5",
+      "overs": "17.5",
+      "board_score": "171/5",
+      "board_overs": "18.5",
+      "score_basis": "inferred_next_ball",
+      "quotes": [],
+      "match_time_s": 575.6,
+      "clip_file": "000575_wicket_2c8fe17b6423.mp4",
+      "id": "2c8fe17b6423"
+    },
+    {
+      "start_in_package": 290.43,
+      "duration": 7.96,
+      "innings": 2,
+      "type": "six",
+      "caption": "SIX",
+      "caption_t": 583.56,
+      "caption_in_package": 292.63,
+      "caption_offset_in_clip": 2.2,
+      "segments": [
+        [
+          581.36,
+          589.32
+        ]
+      ],
+      "confidence": 0.95,
+      "hold_reasons": [
+        "no_cut_snap"
+      ],
+      "needs_review": true,
+      "sources": [
+        "ocr"
+      ],
+      "score": "177/5",
+      "overs": "19.0",
+      "board_score": "177/5",
+      "board_overs": "19.0",
+      "quotes": [],
+      "match_time_s": 584.6,
+      "clip_file": "000584_six_e41b40ee4831.mp4",
+      "id": "e41b40ee4831"
+    },
+    {
+      "start_in_package": 298.39,
+      "duration": 12.97,
+      "innings": 2,
+      "type": "match_end",
+      "caption": "WINNING RUNS · FOUR",
+      "caption_t": 597.56,
+      "caption_in_package": 302.38,
+      "caption_offset_in_clip": 3.99,
+      "segments": [
+        [
+          593.57,
+          606.54
+        ]
+      ],
+      "confidence": 0.95,
+      "hold_reasons": [],
+      "needs_review": false,
+      "sources": [
+        "ocr"
+      ],
+      "score": "181/5",
+      "overs": "19.2",
+      "board_score": "181/5",
+      "board_overs": "19.2",
+      "quotes": [],
+      "match_time_s": 602.8,
+      "clip_file": "000602_match_end_b0aca7fdfeee.mp4",
+      "id": "b0aca7fdfeee"
+    }
+  ]
+}
