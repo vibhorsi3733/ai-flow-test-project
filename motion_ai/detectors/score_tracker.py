@@ -161,7 +161,9 @@ class ScoreTracker:
             self._footer_seen = None
             ev = self._ev(EventType.INNINGS_END, t, 0.95,
                           {"score": fmt_score(tot), "overs": fmt_overs(tot), "source": "scorecard_footer",
-                           "unseen_wickets": tot.wickets - st.wickets, "unseen_runs": tot.runs - st.runs})
+                           "unseen_wickets": tot.wickets - st.wickets, "unseen_runs": tot.runs - st.runs,
+                           # last bar change: a wicket the bar never showed fell after it (fuser)
+                           "prev_change_t": self._last_change_t})
             # The bar may flash the final state later (e.g. 179-7 20.0) — do not report that as a new wicket.
             self.state = tot
             self.innings_last[self.innings] = (t, tot)
