@@ -41,6 +41,16 @@ WICKET_LOOKBACK_S = 45.0      # max gap call -> scoreboard confirmation (third-u
 WICKET_ABSORB_AFTER_S = 25.0  # later calls ("first wicket down", replays) fold into the same wicket
 ASR_CALL_EXTRA_WAIT_S = 20.0  # commentary calls wait settle+20s so a slow confirmation can arrive
 SLOW_CONFIRM_S = 20.0
+# Wickets the scoreboard bar never showed (fusion report: 179/7 last-ball run-out). The confirmed INNINGS_END
+# footer reports unseen_wickets = footer wickets - last bar wickets. Each one still becomes a WICKET clip:
+#   1. a commentary wicket call in (last board change, footer] (and not absorbed as a replay call of the last
+#      confirmed wicket) is CONFIRMED by the footer (OCR stays the source
+#      of truth for the count; the call only anchors the clip), score at the dismissal from the footer;
+#   2. wickets no call covers become one inferred WICKET just before the footer (t = footer - LEAD, never before
+#      the last board change), held innings_inferred + no_call_anchor so a human checks the moment.
+INNINGS_END_CALL_S = 120.0    # max gap call -> footer for a call the footer may confirm
+INFERRED_WICKET_LEAD_S = 10.0  # inferred anchor: this long before the footer (last ball, then the footer)
+INFERRED_AFTER_PREV_S = 2.0    # ...but at least this long after the last board change / claiming call
 RUN_OUT_RX = re.compile(r"run[\s-]?out|direct hit", re.I)
 REVIEW_RX = re.compile(r"review|third umpire|decision pending|upstairs", re.I)
 
@@ -76,6 +86,12 @@ def next_ball(overs) -> str | None:
         return None
     o, b = int(m.group(1)), int(m.group(2) or 0)
     return f"{o + 1}.1" if b >= 6 else f"{o}.{b + 1}"
+
+
+def _balls(overs) -> int | None:
+    """'19.6' and '20.0' -> 120 (legal balls bowled)."""
+    m = re.fullmatch(r"\s*(\d+)(?:\.(\d))?\s*", str(overs or ""))
+    return int(m.group(1)) * 6 + int(m.group(2) or 0) if m else None
 
 
 def dismissal_score(detail: dict) -> dict:
@@ -119,8 +135,13 @@ class Fuser:
         self.pending: list[Event] = []
         self.excitement: list[Event] = []
         self.recent: list[FusedEvent] = []
+        self._board_changes: list[tuple[float, int]] = []   # (t, innings) of every OCR score event (fallback)
+        self._end_claimed: dict[str, int] = {}               # raw INNINGS_END id -> unseen wickets accounted for
+        self._end_last_call: dict[str, float] = {}           # raw INNINGS_END id -> latest call that claimed one
 
     def add(self, ev: Event) -> None:
+        if ev.source == Source.OCR and ev.type != EventType.INNINGS_END and ev.detail.get("score"):
+            self._board_changes.append((ev.t, int(ev.detail.get("innings") or 1)))
         (self.excitement if ev.type == EventType.EXCITEMENT else self.pending).append(ev)
 
     def _wait(self, e: Event) -> float:
@@ -140,6 +161,11 @@ class Fuser:
                                     if e.type == anchor.type and lo <= e.t - anchor.t <= hi]
                 self._remove(group)
                 fused = self._fuse(group)
+                if self.ocr_enabled and anchor.source == Source.OCR and anchor.type == EventType.INNINGS_END:
+                    for w in self._unseen_wickets(anchor):   # before the footer, in time order
+                        if not self._is_duplicate(w):
+                            out.append(w)
+                            self.recent.append(w)
             self._mark_prev_innings_start(fused)
             if not self._is_duplicate(fused):
                 out.append(fused)
@@ -168,6 +194,9 @@ class Fuser:
                      and 0 <= e.t - anchor.t <= WICKET_LOOKBACK_S
                      and (e.detail.get("prev_change_t") is None or anchor.t > e.detail["prev_change_t"])]
             ocr = cands[0] if cands else None
+
+        if ocr is None and anchor.type == EventType.WICKET and (end := self._footer_for_call(anchor)) is not None:
+            return self._footer_wicket(end, anchor)
 
         if ocr is None:   # commentary only — scoreboard never confirmed it
             group = [anchor] + [e for e in self.pending if e.source == Source.ASR and e.type in CALL_TYPES
@@ -212,6 +241,97 @@ class Fuser:
         self._call_holds(f, calls, quotes)
         annotate_dismissal(f)
         return f
+
+    # ------------------------------------------------------------------
+    # Wickets only the INNINGS_END footer saw (see INNINGS_END_CALL_S above)
+    def _last_change_t(self, end: Event) -> float | None:
+        """Time of the last scoreboard change of the footer's innings (score tracker field, else recorded reads)."""
+        if end.detail.get("prev_change_t") is not None:
+            return float(end.detail["prev_change_t"])
+        inn = int(end.detail.get("innings") or 1)
+        ts = [t for t, i in self._board_changes if i == inn and t < end.t]
+        return max(ts) if ts else None
+
+    def _open_unseen(self, end: Event) -> int:
+        return max(0, int(end.detail.get("unseen_wickets") or 0) - self._end_claimed.get(end.id, 0))
+
+    def _call_in_window(self, call: Event, end: Event) -> bool:
+        prev = self._last_change_t(end)
+        return (prev is None or call.t > prev) and 0 <= end.t - call.t <= INNINGS_END_CALL_S
+
+    def _footer_for_call(self, call: Event) -> Event | None:
+        """A pending INNINGS_END footer with an unaccounted wicket that this commentary call can stand for."""
+        ends = [e for e in self.pending if e.source == Source.OCR and e.type == EventType.INNINGS_END
+                and self._open_unseen(e) > 0 and self._call_in_window(call, e)]
+        return min(ends, key=lambda e: e.t) if ends else None
+
+    def _footer_wicket(self, end: Event, anchor: Event) -> FusedEvent:
+        """The footer confirms the call: an OCR wicket anchored on the call (and calls absorbed with it)."""
+        group = [anchor] + [e for e in self.pending if e.source == Source.ASR and e.type in CALL_TYPES
+                            and 0 <= e.t - anchor.t <= WICKET_ABSORB_AFTER_S and e.t <= end.t
+                            and self._owner(e) is None]
+        self._remove(group)
+        quotes = [e.detail.get("quote", "") for e in group]
+        n = self._end_claimed.get(end.id, 0) + 1
+        self._end_claimed[end.id] = n
+        self._end_last_call[end.id] = anchor.t
+        f = FusedEvent(EventType.WICKET, anchor.t, round(end.confidence, 3), {Source.OCR, Source.ASR},
+                       self._footer_detail(end, n, 1) | {"call_t": anchor.t, "quotes": quotes})
+        self._call_holds(f, group, quotes)
+        if f.detail["score_basis"] == "unknown":
+            f.hold("score_inferred")
+        log.info("Footer %s confirms commentary wicket call at t=%.1f (wicket %s)", end.detail.get("score"),
+                 anchor.t, f.detail.get("event_wicket_no"))
+        return f
+
+    def _unseen_wickets(self, end: Event) -> list[FusedEvent]:
+        """At the footer: unseen wickets no commentary call claimed become ONE inferred wicket before it.
+        (Calls in the window are always fused first: pending events finalize in time order and a call waits
+        longer than the footer, so it holds the footer back until it has claimed its wicket.)"""
+        out: list[FusedEvent] = []
+        k = self._open_unseen(end)
+        if k == 0:
+            return out
+        n = self._end_claimed.get(end.id, 0) + k
+        self._end_claimed[end.id] = n
+        # after the last board change and after any call that claimed an earlier unseen wicket
+        floor = max([t for t in (self._last_change_t(end), self._end_last_call.get(end.id)) if t is not None],
+                    default=None)
+        t = end.t - INFERRED_WICKET_LEAD_S
+        if floor is not None:
+            t = max(t, min(floor + INFERRED_AFTER_PREV_S, end.t - self.ocr_lag))
+        f = FusedEvent(EventType.WICKET, t, round(end.confidence, 3), {Source.OCR},
+                       self._footer_detail(end, n, k) | {"call_t": None, "quotes": []})
+        f.hold("innings_inferred")      # the moment is a guess: nobody called it, the bar never showed it
+        f.hold("no_call_anchor")
+        if k >= 2:
+            f.hold("multi_wicket_gap")
+        if f.detail["score_basis"] == "unknown":
+            f.hold("score_inferred")
+        log.info("Footer %s: %d wicket(s) never shown or called — inferred wicket at t=%.1f (held)",
+                 end.detail.get("score"), k, t)
+        return out + [f]
+
+    def _footer_detail(self, end: Event, n: int, k: int) -> dict:
+        """Detail of the n-th unseen wicket (k wickets in this event). score = the footer total for the last one,
+        otherwise the last bar runs with the wicket count so far (runs unknown -> score_basis unknown)."""
+        d = end.detail
+        prev, tot = parse_score(d.get("prev_score")), parse_score(d.get("score"))
+        unseen = int(d.get("unseen_wickets") or 0)
+        last = n >= unseen
+        wkt_no = (prev[1] + n) if prev else (tot[1] - unseen + n if tot else None)
+        if last or prev is None:
+            score = d.get("score")
+        else:
+            score = f"{prev[0]}/{wkt_no}"
+        one_ball = next_ball(d.get("prev_overs")) is not None and _balls(next_ball(d.get("prev_overs"))) == _balls(d.get("overs"))
+        exact = last and unseen == 1 and k == 1 and int(d.get("unseen_runs") or 0) == 0 and one_ball
+        out = {"score": score, "overs": d.get("overs") if last else None, "wickets": k,
+               "innings": d.get("innings", 1), "prev_score": d.get("prev_score"),
+               "prev_overs": d.get("prev_overs"), "prev_change_t": self._last_change_t(end),
+               "confirm_source": "innings_end", "innings_end_t": end.t, "innings_end_id": end.id,
+               "event_wicket_no": wkt_no, "score_basis": "board" if exact else "unknown"}
+        return out
 
     def _mark_prev_innings_start(self, f: FusedEvent) -> None:
         """Flag events whose previous scoreboard change is the innings-start read. That read is confirmed only

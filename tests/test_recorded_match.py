@@ -3,8 +3,8 @@
 Fuses exactly like motion_ai/replay.py fuse_recorded (OCR on: settle 30 s, lag 6 s) and checks the facts
 the package cards and the wicket audit are built from. IPL head condition 2: every innings-2 wicket change
 is present. Broadcaster scorecard: 179-7 (FoW 6, 94, 99, 139, 177, 178, 179), chase 181/5 in 19.2 ov.
-The 7th first-innings wicket (179/7, last-ball run-out) never showed as a score change: only the confirmed
-INNINGS_END read can carry it into the audit.
+The 7th first-innings wicket (179/7, last-ball run-out) never showed as a score change: the confirmed
+INNINGS_END read confirms the commentary call at 394.2 ("one more easy run out") as that wicket.
 """
 from pathlib import Path
 
@@ -46,7 +46,9 @@ def test_target_and_result_confirmed(facts):
 
 
 def test_ocr_wicket_changes_both_innings(facts):
-    assert [w["score"] for w in facts.wicket_changes[1]] == ["6/1", "94/2", "116/3", "157/4", "177/5", "179/6"]
+    assert [w["score"] for w in facts.wicket_changes[1]] == ["6/1", "94/2", "116/3", "157/4", "177/5", "179/6",
+                                                             "179/7"]
+    assert facts.wicket_changes[1][-1]["t"] == 394.2                 # anchored on the commentary call
     assert [w["score"] for w in facts.wicket_changes[2]] == ["69/1", "112/2", "127/3", "155/4", "171/5"]
 
 
@@ -62,9 +64,9 @@ def test_every_wicket_change_is_eligible_for_the_plan(fused, facts):
     clips = [Clip(e, [(e.t - 5, e.t + 5)], Path(f"/tmp/{e.id}.mp4")) for e in fused
              if e.type == EventType.WICKET and e.id in {w["id"] for i in (1, 2) for w in facts.wicket_changes[i]}]
     mp = match_plan(clips, 300, facts, "t", overs=None)
-    for i, n in ((1, 6), (2, 5)):
+    for i, n in ((1, 7), (2, 5)):
         assert mp.wicket_audit[f"innings_{i}"]["wickets_clipped"] == n
-    # 179/7 (last-ball run-out) was never a score change: INNINGS_END makes it 7 on board and names it
+    # 179/7 (last-ball run-out) was never a score change: the INNINGS_END footer confirms the call -> clipped
     assert mp.wicket_audit["innings_1"]["wickets_on_board"] == 7
-    assert "innings 1: 179/7 (20.0 ov) not clipped" in mp.wicket_audit["wicket_missing"]
+    assert not any("179/7" in m for m in mp.wicket_audit.get("wicket_missing", []))
     assert mp.wicket_audit["innings_2"]["wickets_on_board"] == 5

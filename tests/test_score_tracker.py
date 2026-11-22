@@ -128,6 +128,7 @@ def test_last_ball_wicket_confirmed_by_footer():
     d = evs[0].detail
     assert (d["innings"], d["score"], d["overs"], d["source"]) == (1, "179/7", "20.0", "scorecard_footer")
     assert (d["prev_score"], d["prev_overs"], d["unseen_wickets"]) == ("179/6", "19.5", 1)
+    assert d["prev_change_t"] == 0.0          # last bar change: the unseen wicket fell after it (fuser window)
     assert EventType.INNINGS_END in __import__("motion_ai.events", fromlist=["x"]).OCR_AUTHORITATIVE
     assert not tr.wants_innings_total()
     assert tr.update_innings_total(405.0, "OVERS20TOTAL179-7") == []          # once per innings
