@@ -64,7 +64,7 @@ flowchart TD
 | | Link |
 |---|---|
 | Source video (YouTube, used as a stand-in for the live SRT feed) | https://www.youtube.com/watch?v=F62YNMNfvA4 |
-| Output highlights video (4:58, 1080p) | _to be added: hosted outside GitHub (file is 230 MB, above GitHub's 100 MB limit)_ |
+| Output highlights video (4:58, 1080p) | https://wpz5sl5dmq.ufs.sh/f/mY3PNsje3CtypowHhcdjIXq7xtJKiBkbU298L4yEwu1gCo6F |
 
 Demo result: 14 clips + 6 cards, all 12 wickets clipped, quality gate 14/14 (VMAF ≥ 99), true peak −0.8 dBTP.
 The source is a YouTube re-upload of a T20 Mumbai League broadcast: it is for internal demo only and must not be
