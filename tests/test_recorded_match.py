@@ -73,3 +73,16 @@ def test_every_wicket_change_is_eligible_for_the_plan(fused, facts):
     assert mp.wicket_audit["innings_1"]["wickets_on_board"] == 7
     assert not any("179/7" in m for m in mp.wicket_audit.get("wicket_missing", []))
     assert mp.wicket_audit["innings_2"]["wickets_on_board"] == 5
+
+
+def test_commentary_call_tied_with_94_1_read_is_part_of_94_2(fused, facts):
+    """"Thane Strikers, this is gone" (151.84 = segment 31 start = the 94/1 read) is the 94/2 catch, not an
+    unconfirmed wicket: no commentary-only wicket left, no wicket_missing package hold."""
+    from motion_ai.highlights.clips import Clip
+    assert not [e for e in fused if e.type == EventType.WICKET and 150 <= e.t <= 153 and len(e.sources) == 1]
+    (w,) = [e for e in fused if e.type == EventType.WICKET and e.detail.get("score") == "94/2"]
+    assert any("this is gone" in q for q in w.detail["quotes"]) and w.detail["call_t"] == 157.5
+    clips = [Clip(e, [(e.t - 5, e.t + 5)], Path(f"/tmp/{e.id}.mp4")) for e in fused if e.type == EventType.WICKET]
+    mp = match_plan(clips, 300, facts, "t", overs=None)
+    assert mp.wicket_audit["innings_1"]["wicket_calls_not_on_scoreboard"] == []
+    assert mp.package_holds == []

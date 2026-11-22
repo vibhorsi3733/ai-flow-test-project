@@ -5,13 +5,13 @@
     "background": "#0b1d3a",
     "accent": "#f2b705",
     "text": "white",
-    "caption_text": "white",
+    "caption_text": "#0b1d3a",
     "caption_border": "black",
-    "caption_box": "#00000099"
+    "caption_box": "#f2b705"
   },
   "font": {
     "file": null,
-    "sizes": {"headline": 96, "subhead": 80, "stat": 72, "body": 64, "small": 48, "caption": 72}
+    "sizes": {"headline": 96, "subhead": 80, "stat": 72, "body": 64, "small": 48, "caption": 88}
   },
   "logo": {
     "file": null,
@@ -25,10 +25,15 @@
     "accent_bar_height": 0
   },
   "caption": {
-    "y": 0.72,
-    "border_width": 4,
-    "box": false,
-    "box_padding": 16
+    "enabled": false,
+    "_comment": "Solid brand box, top centre: clear of the broadcaster score bar (y 900-1024 at 1080p) and corner logos. px values are for ref_height and scale with the frame.",
+    "y": 0.15,
+    "border_width": 0,
+    "box": true,
+    "box_padding": 22,
+    "box_padding_x": 44,
+    "fade": 0.3,
+    "ref_height": 1080
   },
   "safe_margins": {"x": 64, "y": 48}
 }

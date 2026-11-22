@@ -33,7 +33,7 @@ def inside(ranges, t):
 
 def caption_visible(ranges, cap_t):
     c = Clip(None, ranges, None, "", cap_t)
-    return c.duration - c.offset_of(cap_t) >= 1.5 - 1e-6 and inside(ranges, cap_t)
+    return c.duration - c.offset_of(cap_t) >= 3.0 - 1e-6 and inside(ranges, cap_t)   # every caption >= 3s
 
 
 # --- score at the dismissal ---------------------------------------------------------------------------------
@@ -193,7 +193,8 @@ def test_apply_avoid_splits_and_drops_slivers():
 
 
 def test_clamp_caption():
-    assert clamp_caption([(319.42, 339.42)], 339.42) == 337.92
+    assert clamp_caption([(319.42, 339.42)], 339.42) == 336.42          # >= 3s on screen (fix round 2)
+    assert clamp_caption([(319.42, 339.42)], 339.42, tail=1.5) == 337.92
     assert clamp_caption([(10, 20), (30, 40)], 25) == 30
     assert clamp_caption([(10, 20)], 5) == 10
     assert clamp_caption([(10, 20)], 15) == 15
@@ -282,3 +283,74 @@ def test_late_commentary_call_does_not_move_a_gap_wicket_clip():
     ranges, cap_t = plan_ranges(ev, [472.31, 481.84, 497.54], [])
     assert ranges[0][0] <= 475.0 and ranges[-1][1] >= 481.0       # the live catch is inside the clip
     assert ranges[0][0] <= cap_t <= ranges[-1][1]
+
+
+# --- fix round 2: caption >= 3s at/after the outcome (ground truth from source frames) -----------------------
+def test_178_6_run_out_off_a_wide_includes_the_live_ball():
+    # change 339.42; run-up 340.0, wide released 341.5, keeper 342-343.5, run out at the bowler's end ~345,
+    # umpire signals wide 347-353, WICKET ticker 355, replay 356-361.5, board 362.06, next ball 363.1.
+    # The only call ("Also going to result in another runout") is spoken over the replay at 356.06.
+    ev = FusedEvent(EventType.WICKET, 356.06, 0.95, {Source.OCR, Source.ASR},
+                    {"score": "179/6", "overs": "19.5", "runs": 2, "wickets": 1, "gap": False, "innings": 1,
+                     "prev_score": "177/5", "prev_overs": "19.4", "prev_change_t": 339.42, "confirm_t": 362.06,
+                     "call_t": None, "quotes": ["Also going to result in another runout."]})
+    ev.hold("run_out")
+    cuts = [330.92, 334.32, 335.44, 344.13, 345.89, 348.89, 353.69, 365.95]
+    ranges, cap_t = plan_ranges(ev, cuts, loud(339, 371))
+    assert 338.9 <= ranges[0][0] <= 340.0                       # live run-up, not the umpire signalling
+    assert all(inside(ranges, t) for t in (341.5, 345.0, 356.5, 361.0))   # wide, run out, replay
+    assert ranges[-1][1] <= 362.3 and sum(b - a for a, b in ranges) <= 25.0
+    assert cap_t >= 356.0 and caption_visible(ranges, cap_t)    # after the outcome, on the replay
+
+
+def test_179_7_last_ball_run_out_ends_before_the_batting_card():
+    # delivery 384.5, dive 386.5-388, throw relay, stumps broken 397.4, card fades in 397.75, footer read 400.96
+    ev = FusedEvent(EventType.WICKET, 394.2, 0.9, {Source.ASR, Source.OCR},
+                    {"score": "179/7", "overs": "20.0", "wickets": 1, "innings": 1, "prev_score": "179/6",
+                     "prev_overs": "19.5", "prev_change_t": 362.06, "confirm_source": "innings_end",
+                     "innings_end_t": 400.96, "call_t": 394.2, "quotes": ["And one more easy run out."]})
+    ev.hold("run_out")
+    ranges, cap_t = plan_ranges(ev, [], loud(394, 403))
+    assert ranges[0][0] <= 384.5 and 397.45 <= ranges[-1][1] <= 397.7
+    assert cap_t >= 394.2 and caption_visible(ranges, cap_t)
+    assert ranges[-1][1] - cap_t <= 3.05                          # as close to the break as 3s allows
+
+
+def test_177_5_six_caption_when_the_ball_lands():
+    # change 581.56, hit 582.5, in the stands 583.0-583.5, seats until 588.5, batter 589-590.3, board 590.56
+    ev = FusedEvent(EventType.SIX, 584.56, 0.95, {Source.OCR},
+                    {"score": "177/5", "overs": "19.0", "runs": 6, "gap": False, "innings": 2,
+                     "prev_score": "171/5", "prev_overs": "18.5", "prev_change_t": 581.56, "confirm_t": 590.56})
+    ranges, cap_t = plan_ranges(ev, [582.95, 589.36, 590.76], loud(565, 592, peak_t=584.36))
+    (a, b), = ranges
+    assert a <= 581.5 and 589.0 <= b < 590.56
+    assert 583.0 <= cap_t <= 584.0 and caption_visible(ranges, cap_t)
+
+
+def test_winning_runs_label_is_decided_before_the_burn():
+    d = {"score": "181/5", "overs": "19.2", "runs": 4, "gap": False, "prev_change_t": 593.56,
+         "confirm_t": 608.8, "target": 180, "innings": 2}
+    ev = FusedEvent(EventType.MATCH_END, 602.8, 0.95, {Source.OCR}, dict(d))
+    assert caption_for(ev) == "WINNING RUNS · FOUR"
+    assert caption_for(FusedEvent(EventType.MATCH_END, 1, 0.95, {Source.OCR}, d | {"runs": 6})) == "WINNING RUNS · SIX"
+    assert caption_for(FusedEvent(EventType.MATCH_END, 1, 0.95, {Source.OCR}, d | {"runs": 2})) == "WINNING RUNS"
+    assert caption_for(FusedEvent(EventType.MATCH_END, 1, 0.95, {Source.OCR}, d | {"gap": True})) == "WINNING RUNS"
+    # delivery 594.0, hit 595.0, ball to the rope ~597-598.5; crowd peak 601.4 is the celebration
+    ranges, cap_t = plan_ranges(ev, [596.11, 602.63, 604.51, 606.53], loud(578, 618, peak_t=601.4))
+    assert ranges[0][0] <= 594.0 and 596.5 <= cap_t <= 598.5 and caption_visible(ranges, cap_t)
+
+
+def test_winning_runs_fold_never_relabels_a_burned_clip(tmp_path):
+    from motion_ai.highlights.curator import MatchFacts, match_plan
+    def clip(etype, path, caption):
+        ev = FusedEvent(etype, 602.8, 0.95, {Source.OCR}, {"score": "181/5", "overs": "19.2", "innings": 2,
+                                                         "runs": 4, "gap": False})
+        return Clip(ev, [(593.6, 606.5)], path, caption, 597.6)
+    burned = tmp_path / "me.mp4"
+    burned.write_bytes(b"x")
+    for path, cap, want in [(burned, "WINNING RUNS", "WINNING RUNS"),               # burned: keep what is on screen
+                            (tmp_path / "new.mp4", "WINNING RUNS", "WINNING RUNS · FOUR"),
+                            (burned, "WINNING RUNS · FOUR", "WINNING RUNS · FOUR")]:  # never doubled
+        me, four = clip(EventType.MATCH_END, path, cap), clip(EventType.FOUR, None, "FOUR")
+        mp = match_plan([me, four], 300, MatchFacts(wicket_changes={1: [], 2: []}, innings_end={}), "t", overs=None)
+        assert [c for c, _ in mp.plan.items] == [me] and mp.plan.items[0][1] == want and me.caption == want

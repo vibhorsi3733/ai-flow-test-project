@@ -179,10 +179,30 @@ def reset_caches() -> None:
     _SOURCE_AUDIO_RATE = None
 
 
+# True-peak safety on every clip and card: the broadcast mix hits 0.0 dBFS and the AAC encode overshoots on top
+# of that. A look-ahead limiter (no auto-gain, delay compensated so A/V sync is kept) runs at 4x the sample rate
+# (oversampled = inter-sample peaks are caught, i.e. a true-peak limiter) with a ceiling below -1 dBTP that leaves
+# room for the AAC overshoot. It only touches the rare peaks (fast attack, 50 ms release = no audible pumping);
+# programme loudness is unchanged. Output rate / channels / codec stay the same so the -c copy join still works.
+TRUE_PEAK_DBTP = -1.0              # package target (measured after the AAC encode, ebur128 true peak)
+LIMITER_CEILING_DB = -3.0          # limiter ceiling at 4x oversampling; margin for the AAC encode (+1.3 dBTP seen at -2)
+LIMITER_OVERSAMPLE = 4
+
+
+def peak_limiter(rate: int = DEFAULT_AUDIO_RATE) -> str:
+    """Audio filter chain: oversampled look-ahead true-peak limiter, back to `rate`, stereo fltp."""
+    ceiling = 10 ** (LIMITER_CEILING_DB / 20)
+    return (f"aresample={rate * LIMITER_OVERSAMPLE},"
+            f"alimiter=limit={ceiling:.4f}:attack=1:release=50:level=0:latency=1,"
+            f"aresample={rate},aformat=sample_fmts=fltp:channel_layouts=stereo")
+
+
 # Crowd bed under the text cards: a stretch of this match's own feed, band-limited to 80-400 Hz (commentary
-# becomes an unintelligible murmur, the crowd roar stays), loudness-normalised to -36 LUFS (~16 dB under the
-# feed's programme level, ~-22 dB mean on the IPL broadcast) and faded at both ends so the -c copy joins don't click.
-CROWD_BED_LUFS = -36
+# becomes an unintelligible murmur, the crowd roar stays), loudness-normalised to -27 LUFS and faded at both ends
+# so the -c copy joins don't click. Measured on the demo match: ~-31 dB mean (volumedetect) vs clips ~-23 dB, i.e.
+# clearly present but well under the programme (was -36 LUFS = ~-39 dB mean, which read as dead air).
+CROWD_BED_LUFS = -27
+CROWD_BED_TP = -3
 CROWD_BED_FADE = 0.4
 
 
@@ -191,10 +211,11 @@ def crowd_bed_filter(start: float, seconds: float, rate: int = DEFAULT_AUDIO_RAT
     fade = min(CROWD_BED_FADE, seconds / 4)
     return (f"atrim=start={start:.3f}:end={start + seconds:.3f},asetpts=PTS-STARTPTS,"
             "highpass=f=80,lowpass=f=400,lowpass=f=400,"
-            f"loudnorm=I={CROWD_BED_LUFS}:TP=-9:LRA=5,aresample={rate},"
+            f"loudnorm=I={CROWD_BED_LUFS}:TP={CROWD_BED_TP}:LRA=5,aresample={rate},"
             "aformat=sample_fmts=fltp:channel_layouts=stereo,"
             f"apad,atrim=end={seconds:.3f},"
-            f"afade=t=in:st=0:d={fade:.2f},afade=t=out:st={seconds - fade:.3f}:d={fade:.2f}")
+            f"afade=t=in:st=0:d={fade:.2f},afade=t=out:st={seconds - fade:.3f}:d={fade:.2f},"
+            + peak_limiter(rate))
 
 
 def card_video_args(tpl, lines: list[tuple[str, int]], seconds: float, size: tuple[int, int], fps: float,
@@ -280,7 +301,7 @@ async def cut_clip(segments: list[Path], seg_start: float, t0: float, t1: float,
         "ffmpeg", "-hide_banner", "-loglevel", "error", "-y",
         "-f", "concat", "-safe", "0", "-i", str(concat_list),
         "-ss", f"{max(0.0, t0 - seg_start):.3f}", "-t", f"{t1 - t0:.3f}",
-        *(["-vf", sf] if sf else []), *video_opts(encoder), *audio_opts(rate),
+        *(["-vf", sf] if sf else []), "-af", peak_limiter(rate), *video_opts(encoder), *audio_opts(rate),
         "-movflags", "+faststart", str(out),
     ])
     concat_list.unlink(missing_ok=True)
@@ -421,14 +442,17 @@ async def render_clip(segments: list[Path], base: float, ranges: list[tuple[floa
         parts.append(f"[0:a]atrim=start={sa:.3f}:end={sb:.3f},asetpts=PTS-STARTPTS,"
                      f"afade=t=in:st=0:d={fade},afade=t=out:st={max(0.0, d - fade):.3f}:d={fade}[a{i}]")
         labels.append(f"[v{i}][a{i}]")
-    parts.append(f"{''.join(labels)}concat=n={len(ranges)}:v=1:a=1[vc][ac]")
+    parts.append(f"{''.join(labels)}concat=n={len(ranges)}:v=1:a=1[vc][acat]")
+    parts.append(f"[acat]{peak_limiter(rate)}[ac]")
     src = await probe_async(segments[0])
-    sf = scale_filter(src.get("width", 1920), src.get("height", 1080))
+    sw, sh = src.get("width", 1920), src.get("height", 1080)
+    sf = scale_filter(sw, sh)
     vchain = "[vc]" + (sf or "null")
-    if caption:
+    if caption and tpl.caption.get("enabled", True):
         txt = out.with_suffix(".caption.txt")
         txt.write_text(caption, encoding="utf-8")
-        vchain += "," + caption_draw(tpl, txt, caption_offset)
+        vchain += "," + caption_draw(tpl, txt, caption_offset, height=out_size(sw, sh)[1],
+                                     end=sum(b - a for a, b in ranges))
     bug = tpl.logo("clip_bug")
     if bug:
         x, y = overlay_xy(bug["position"], tpl.margins)

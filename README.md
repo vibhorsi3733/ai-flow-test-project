@@ -75,7 +75,11 @@ HIGHLIGHT_OVERS=[{"team":"Triumph Knights","overs":"1-6"},{"team":"Eagle Thane S
   `wicket_audit.innings_N.not_selected_over` and never count as missing.
 * Cards carry a soft crowd bed from the match's own feed (no dead air): back-to-back cards share one stretch taken
   right after the previous clip (the reaction), or just before the first clip for the opening cards; band-limited
-  to 80-400 Hz so commentary is only a murmur, normalised to -36 LUFS (~16 dB under the programme), 0.4 s fades.
+  to 80-400 Hz so commentary is only a murmur, normalised to -27 LUFS (~-31 dB mean vs ~-23 dB for clips on the
+  demo match, i.e. ~8 dB under the programme), 0.4 s fades.
+* Every clip and card goes through a true-peak limiter (4x oversampled `alimiter`, ceiling -2 dBFS, no auto-gain,
+  delay-compensated) in the same single encode: the package stays <= -1 dBTP after AAC, programme loudness
+  unchanged, same codec / rate / channels so the `-c copy` join still works.
   Manifest `cards[].crowd_bed_t` = stream time used; no source audio -> silent card + a warning.
 
 ## Output quality
@@ -105,7 +109,7 @@ template and approve step exist). Held clips are never dropped and never auto-pu
 
 Card and caption styling (colours, font, font sizes, logo, card lengths, caption box/position, safe margins)
 comes from `config/template.json` if it exists, else from `config/template.example.json` — a neutral
-placeholder that reproduces the built-in look exactly. Every key is optional; a missing key keeps the default.
+placeholder equal to the built-in defaults. Every key is optional; a missing key keeps the default.
 The template is validated at load (bad colour, unknown key, missing font/logo file -> a clear `TemplateError`).
 Caption *text* is not part of the template, only its styling.
 
@@ -118,8 +122,13 @@ e.g. under `config/brand/` (relative paths are resolved against `config/`):
 | Font, `.ttf` or `.otf` | `font.file` | `null` = DejaVu Sans Bold; sizes per role in `font.sizes` (`headline`, `subhead`, `stat`, `body`, `small`, `caption`) |
 | Colours | `colors.*` | `#rrggbb` or `#rrggbbaa` (or a basic name like `white`): `background`, `accent` (card bar, drawn when `cards.accent_bar_height` > 0), `text`, `caption_text`, `caption_border`, `caption_box` |
 
-Other keys: `cards.seconds` (per card), `cards.line_spacing`, `cards.fade`, `caption.y` (fraction of frame
-height), `caption.border_width`, `caption.box` / `caption.box_padding`, `safe_margins.x/y` (px, logo inset).
+Other keys: `cards.seconds` (per card), `cards.line_spacing`, `cards.fade`, `caption.y` (top of the caption text
+as a fraction of frame height; <= 0.75 so it never covers the broadcaster score bar), `caption.border_width`,
+`caption.box` / `caption.box_padding` (top/bottom px) / `caption.box_padding_x` (left/right px), `caption.fade`
+(s, fade in at the caption start and out at the clip end), `caption.ref_height` (the caption px values are for this
+frame height and scale with the output), `safe_margins.x/y` (px, logo inset).
+The default caption is a solid brand box (navy text on the gold accent, 88 px at 1080p) top centre at y 0.15,
+clear of the broadcaster score bar (y 900-1024) and the corner logos, so it reads as ours, not the broadcaster's.
 Positions: `top-left`, `top-right`, `bottom-left`, `bottom-right`, `top-center`, `bottom-center`.
 Note: the curator still budgets the package with its own card lengths (`CARD_SECONDS`), so keep
 `cards.seconds` close to them.

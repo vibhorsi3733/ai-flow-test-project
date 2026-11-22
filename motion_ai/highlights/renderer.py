@@ -41,6 +41,26 @@ def timeout_outcome(plan: Plan) -> tuple[str, list[str]]:
     return ("pending" if meets else "below_minimum"), withheld
 
 
+def manifest_score(detail: dict) -> dict:
+    """Manifest score fields of a clip. `score`/`overs` = the score AT the event: the dismissal score
+    (event_score/event_overs) when the fuser derived one, else the board read itself. When the dismissal score
+    could not be inferred (score_basis "unknown", e.g. a run-out off a wide behind a gap change) score/overs are
+    None, never the later board read. `board_score`/`board_overs` = the scoreboard read that confirmed the event
+    (gap wicket 139/4 (16.2) was confirmed by the 157/4 (18.0) read)."""
+    board_score, board_overs = detail.get("score"), detail.get("overs")
+    basis = detail.get("score_basis")
+    if detail.get("event_score"):
+        score, overs = detail["event_score"], detail.get("event_overs")
+    elif basis == "unknown":
+        score, overs = None, None
+    else:
+        score, overs = board_score, board_overs
+    out = {"score": score, "overs": overs, "board_score": board_score, "board_overs": board_overs}
+    if basis:
+        out["score_basis"] = basis
+    return out
+
+
 async def render(plan: Plan, out_dir: Path, extra: dict | None = None) -> Path | None:
     if not plan.items:
         log.error("Nothing to render — no clips selected")
@@ -212,7 +232,7 @@ async def render_match(mp, facts, match: dict, out_dir: Path, work_dir: Path, en
             "segments": clip.ranges, "confidence": clip.event.confidence,
             "hold_reasons": clip.event.hold_reasons, "needs_review": clip.event.needs_review,
             "sources": sorted(s.value for s in clip.event.sources),
-            "score": clip.event.detail.get("score"), "overs": clip.event.detail.get("overs"),
+            **manifest_score(clip.event.detail),
             "quotes": clip.event.detail.get("quotes") or ([clip.event.detail["quote"]] if clip.event.detail.get("quote") else []),
             "match_time_s": round(clip.event.t, 1), "clip_file": clip.path.name, "id": clip.event.id,
         })

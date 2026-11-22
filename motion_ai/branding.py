@@ -29,13 +29,13 @@ DEFAULTS: dict = {
         "background": "#0b1d3a",     # card background
         "accent": "#f2b705",         # card accent bar (only drawn when cards.accent_bar_height > 0)
         "text": "white",             # card text
-        "caption_text": "white",
-        "caption_border": "black",   # outline around caption letters
-        "caption_box": "#00000099",  # box behind the caption (only when caption.box is true)
+        "caption_text": "#0b1d3a",   # caption letters (brand navy on the brand-gold box)
+        "caption_border": "black",   # outline around caption letters (only when caption.border_width > 0)
+        "caption_box": "#f2b705",    # solid box behind the caption (only when caption.box is true)
     },
     "font": {
         "file": None,                # null = DEFAULT_FONT
-        "sizes": {"headline": 96, "subhead": 80, "stat": 72, "body": 64, "small": 48, "caption": 72},
+        "sizes": {"headline": 96, "subhead": 80, "stat": 72, "body": 64, "small": 48, "caption": 88},
     },
     "logo": {
         "file": None,                # PNG with alpha; null = no logo anywhere
@@ -49,10 +49,16 @@ DEFAULTS: dict = {
         "accent_bar_height": 0,      # px, bottom of the card; 0 = no bar
     },
     "caption": {
-        "y": 0.72,                   # top of the caption as a fraction of frame height
-        "border_width": 4,
-        "box": False,
-        "box_padding": 16,
+        "enabled": False,            # off for now (user decision 2026-11-22); true = burn the caption in (the .srt / manifest still carry the labels)
+        # Our caption must read as ours, not as the broadcaster's ticker: a solid brand-coloured box, top centre,
+        # clear of the broadcaster score bar (y 900-1024 at 1080p) and the corner logos (y < ~150 at 1080p).
+        "y": 0.15,                   # top of the caption TEXT as a fraction of frame height (box adds padding)
+        "border_width": 0,           # px outline around the letters; 0 = none
+        "box": True,
+        "box_padding": 22,           # px above / below the text
+        "box_padding_x": 44,         # px left / right of the text
+        "fade": 0.3,                 # s fade in at the caption start and out at the clip end; 0 = hard cut
+        "ref_height": 1080,          # frame height the px values (font size, padding, border) are designed for
     },
     "safe_margins": {"x": 64, "y": 48},  # px from the frame edge for the logo / corner bug
 }
@@ -74,6 +80,8 @@ def ffmpeg_color(value: str) -> str:
 def _merge(base: dict, over: dict, where: str) -> dict:
     out = copy.deepcopy(base)
     for k, v in over.items():
+        if k.startswith("_"):            # "_comment" keys are allowed at any level
+            continue
         if k not in base:
             raise TemplateError(f"unknown key {where}{k!r} (known: {', '.join(sorted(base))})")
         if isinstance(base[k], dict):
@@ -190,9 +198,17 @@ def validate(raw: dict, base_dir: Path) -> dict:
     _num(d["cards"]["accent_bar_height"], "cards.accent_bar_height", 0, 1000)
     _num(d["caption"]["y"], "caption.y", 0, 1)
     _num(d["caption"]["border_width"], "caption.border_width", 0, 50)
+    if not isinstance(d["caption"]["enabled"], bool):
+        raise TemplateError("caption.enabled must be true or false")
     if not isinstance(d["caption"]["box"], bool):
         raise TemplateError("caption.box must be true or false")
     _num(d["caption"]["box_padding"], "caption.box_padding", 0, 200)
+    _num(d["caption"]["box_padding_x"], "caption.box_padding_x", 0, 400)
+    _num(d["caption"]["fade"], "caption.fade", 0, 2)
+    _num(d["caption"]["ref_height"], "caption.ref_height", 100, 4320)
+    if d["caption"]["box"] and d["caption"]["y"] > 0.75:
+        raise TemplateError(f"caption.y {d['caption']['y']:g} puts the caption box over the broadcaster score bar "
+                            "(keep it <= 0.75; the upper part of the frame is recommended)")
     for k, v in d["safe_margins"].items():
         _num(v, f"safe_margins.{k}", 0, 1000)
     if not isinstance(d["name"], str):
@@ -270,12 +286,26 @@ def card_fade(tpl: Template, seconds: float) -> str:
     return f"fade=t=in:st=0:d={f:g},fade=t=out:st={max(0.0, seconds - f):.2f}:d={f:g}"
 
 
-def caption_draw(tpl: Template, textfile: Path | str, offset: float) -> str:
+def caption_draw(tpl: Template, textfile: Path | str, offset: float, height: int = 1080,
+                 end: float | None = None) -> str:
+    """drawtext for the burned clip caption, shown from `offset` (clip seconds) to the clip end.
+
+    Pixel values in the template (font size, padding, border) are for caption.ref_height and are scaled to the
+    output frame `height`. With caption.fade > 0 the caption (text and box) fades in at `offset` and, when the
+    clip length `end` is given, out over the last caption.fade seconds of the clip."""
     c = tpl.caption
-    s = (f"drawtext=fontfile={tpl.font}:textfile='{textfile}':fontsize={tpl.sizes['caption']}:"
+    k = height / float(c["ref_height"])
+    px = lambda v: max(0, int(round(v * k)))  # noqa: E731
+    s = (f"drawtext=fontfile={tpl.font}:textfile='{textfile}':fontsize={max(1, px(tpl.sizes['caption']))}:"
          f"fontcolor={tpl.color('caption_text')}:")
     if c["border_width"]:
-        s += f"borderw={c['border_width']:g}:bordercolor={tpl.color('caption_border')}:"
+        s += f"borderw={max(1, px(c['border_width']))}:bordercolor={tpl.color('caption_border')}:"
     if c["box"]:
-        s += f"box=1:boxcolor={tpl.color('caption_box')}:boxborderw={c['box_padding']:g}:"
+        pad_y, pad_x = px(c["box_padding"]), px(c["box_padding_x"])
+        s += f"box=1:boxcolor={tpl.color('caption_box')}:boxborderw={pad_y}|{pad_x}:"
+    f = float(c["fade"])
+    if f > 0:
+        fade_in = f"(t-{offset:.2f})/{f:g}"
+        expr = f"min({fade_in},({end:.2f}-t)/{f:g})" if end is not None else fade_in
+        s += f"alpha='max(0,min(1,{expr}))':"
     return s + f"x=(w-text_w)/2:y=h*{c['y']:g}:enable='gte(t,{offset:.2f})'"

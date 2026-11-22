@@ -118,7 +118,9 @@ def render_page(manifest: dict, approvals: dict, decision: dict, media, *,
     <h3>#{i + 1} {_e(c.get('type'))} <small>{_e(cid)}</small>
       {"<span class='tag hard'>HELD</span>" if is_held else "<span class='tag okt'>auto ok</span>"}</h3>
     <p class="cap">{_e(c.get('caption'))}</p>
-    <p>Score <b>{_e(c.get('score'))}</b> ({_e(c.get('overs'))} ov) &middot; innings {_e(c.get('innings'))}
+    <p>Score <b>{_e(c.get('score') or 'unknown')}</b> ({_e(c.get('overs') or '?')} ov){
+       f" &middot; board {_e(c.get('board_score'))} ({_e(c.get('board_overs'))} ov)"
+       if c.get('board_score') and c.get('board_score') != c.get('score') else ""} &middot; innings {_e(c.get('innings'))}
        &middot; match t={_e(c.get('match_time_s'))}s &middot; {_e(c.get('duration'))}s
        &middot; confidence {_e(c.get('confidence'))}</p>
     <p>Sources: {_e(', '.join(c.get('sources') or []))}</p>

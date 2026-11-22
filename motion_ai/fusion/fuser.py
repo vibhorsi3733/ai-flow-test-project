@@ -41,6 +41,15 @@ WICKET_LOOKBACK_S = 45.0      # max gap call -> scoreboard confirmation (third-u
 WICKET_ABSORB_AFTER_S = 25.0  # later calls ("first wicket down", replays) fold into the same wicket
 ASR_CALL_EXTRA_WAIT_S = 20.0  # commentary calls wait settle+20s so a slow confirmation can arrive
 SLOW_CONFIRM_S = 20.0
+# Board/call tie: a scoreboard change's t is the FIRST OCR frame that showed the new score (ScoreTracker commits
+# at the candidate's first read; consensus delays the event, not its t), so the real change happened up to one
+# OCR frame interval earlier (1 / OCR_FPS = 0.5 s at the default 2 fps). A commentary call's t is the START of a
+# whisper line (the "this is gone" words sit at its end). Both snap to ingest segment starts: on the 1080p demo
+# the call "Thane Strikers, this is gone" (151.84) and the 94/1 read that is 94/2's prev_change_t (151.84) are
+# both the start of segment 31. A call less than one OCR frame before a wicket's previous change cannot be
+# ordered before it, so it belongs to that wicket (quotes / ownership). It anchors the clip only when no call
+# lies strictly after the previous change (the anchor stays on the unambiguous call).
+BOARD_TIE_S = 0.5
 # Wickets the scoreboard bar never showed (fusion report: 179/7 last-ball run-out). The confirmed INNINGS_END
 # footer reports unseen_wickets = footer wickets - last bar wickets. Each one still becomes a WICKET clip:
 #   1. a commentary wicket call in (last board change, footer] (and not absorbed as a replay call of the last
@@ -125,6 +134,12 @@ def annotate_dismissal(f: FusedEvent) -> None:
         f.hold("score_inferred")
 
 
+def _after_prev(t: float, ocr: Event) -> bool:
+    """Call time t is after the OCR wicket's previous scoreboard change (within the BOARD_TIE_S tie)."""
+    prev = ocr.detail.get("prev_change_t")
+    return prev is None or t > prev - BOARD_TIE_S
+
+
 class Fuser:
     def __init__(self, ocr_enabled: bool, settle_seconds: float, ocr_lag_seconds: float):
         self.ocr_enabled = ocr_enabled
@@ -191,8 +206,7 @@ class Fuser:
         else:
             cands = [e for e in self.pending
                      if e.source == Source.OCR and e.type == EventType.WICKET
-                     and 0 <= e.t - anchor.t <= WICKET_LOOKBACK_S
-                     and (e.detail.get("prev_change_t") is None or anchor.t > e.detail["prev_change_t"])]
+                     and 0 <= e.t - anchor.t <= WICKET_LOOKBACK_S and _after_prev(anchor.t, e)]
             ocr = cands[0] if cands else None
 
         if ocr is None and anchor.type == EventType.WICKET and (end := self._footer_for_call(anchor)) is not None:
@@ -220,11 +234,11 @@ class Fuser:
         nxt = min((e.t for e in self.pending if e.source == Source.OCR and e.t > ocr.t and e.detail.get("score")),
                   default=float("inf"))
         calls += [e for e in self.pending if e.source == Source.ASR and e.type in CALL_TYPES
-                  and prev < e.t <= min(ocr.t + WICKET_ABSORB_AFTER_S, nxt)
+                  and prev - BOARD_TIE_S < e.t <= min(ocr.t + WICKET_ABSORB_AFTER_S, nxt)
                   and (e.t <= ocr.t or self._owner(e) in (None, ocr))]
         self._remove(calls + [ocr])
-        before = sorted(c.t for c in calls if c.t <= ocr.t)
-        call_t = before[0] if before else None
+        before = sorted(c.t for c in calls if prev < c.t <= ocr.t) or sorted(c.t for c in calls if c.t <= ocr.t)
+        call_t = before[0] if before else None   # tie calls (see BOARD_TIE_S) anchor only when nothing else does
         quotes = [c.detail.get("quote", "") for c in calls]
         detail = dict(ocr.detail) | {"call_t": call_t, "confirm_t": ocr.t, "quotes": quotes}
         sources = {Source.OCR} | ({Source.ASR} if calls else set())
@@ -346,8 +360,7 @@ class Fuser:
         """The OCR wicket this commentary call precedes (call after that wicket's previous scoreboard change)."""
         for o in sorted((e for e in self.pending if e.source == Source.OCR and e.type == EventType.WICKET),
                         key=lambda e: e.t):
-            prev = o.detail.get("prev_change_t")
-            if 0 <= o.t - call.t <= WICKET_LOOKBACK_S and (prev is None or call.t > prev):
+            if 0 <= o.t - call.t <= WICKET_LOOKBACK_S and _after_prev(call.t, o):
                 return o
         return None
 

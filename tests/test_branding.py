@@ -143,10 +143,12 @@ def test_card_args_from_example_equal_todays(example):
     assert vargs == ["-vf", vf, "-map", "0:v"]
 
 
-def test_caption_from_example_equals_todays(example):
-    today = (f"drawtext=fontfile={TODAY_FONT}:textfile='/x/c.txt':fontsize=72:fontcolor=white:"
-             f"borderw=4:bordercolor=black:x=(w-text_w)/2:y=h*0.72:enable='gte(t,{1.234:.2f})'")
-    assert branding.caption_draw(example, "/x/c.txt", 1.234) == today
+def test_caption_from_example_is_brand_box_top_centre(example):
+    # fix round 2: solid brand box (navy on gold), larger font, upper frame, 0.3 s fade (see test_caption_style)
+    want = (f"drawtext=fontfile={TODAY_FONT}:textfile='/x/c.txt':fontsize=88:fontcolor=0x0b1d3a:"
+            "box=1:boxcolor=0xf2b705:boxborderw=22|44:alpha='max(0,min(1,(t-1.23)/0.3))':"
+            "x=(w-text_w)/2:y=h*0.15:enable='gte(t,1.23)'")
+    assert branding.caption_draw(example, "/x/c.txt", 1.234) == want
 
 
 def test_card_texts_sizes_from_example_equal_todays(example):
@@ -184,17 +186,20 @@ def _capture_render_clip(monkeypatch, tpl, tmp_path):
     return cmds[0]
 
 
-def test_render_clip_caption_unchanged_and_bug_optional(monkeypatch, tmp_path, example, logo_png):
+def test_render_clip_caption_and_bug_optional(monkeypatch, tmp_path, example, logo_png):
+    example.data["caption"]["enabled"] = True          # captions are off by default; this test turns them on
     cmd = _capture_render_clip(monkeypatch, example, tmp_path)
     graph = cmd[cmd.index("-filter_complex") + 1]
     assert graph.endswith(f"[vc]null,drawtext=fontfile={TODAY_FONT}:textfile='{tmp_path / 'c.caption.txt'}':"
-                          "fontsize=72:fontcolor=white:borderw=4:bordercolor=black:x=(w-text_w)/2:y=h*0.72:"
+                          "fontsize=88:fontcolor=0x0b1d3a:box=1:boxcolor=0xf2b705:boxborderw=22|44:"
+                          "alpha='max(0,min(1,min((t-0.50)/0.3,(2.00-t)/0.3)))':x=(w-text_w)/2:y=h*0.15:"
                           "enable='gte(t,0.50)'[vout]")
     assert cmd.count("-i") == 1
 
     d = copy.deepcopy(DEFAULTS)
     d["logo"].update(file=str(logo_png), clip_bug={"enabled": True, "position": "bottom-left", "width": 100,
                                                    "opacity": 0.5})
+    d["caption"]["enabled"] = True
     tpl = branding.Template(d)
     cmd = _capture_render_clip(monkeypatch, tpl, tmp_path)
     graph = cmd[cmd.index("-filter_complex") + 1]
@@ -211,14 +216,16 @@ def test_overlay_positions():
 
 
 def test_styling_options_change_filters(tmp_path):
-    t = load_template(_write(tmp_path, {"colors": {"text": "#fafafa", "accent": "#ff000080"},
+    t = load_template(_write(tmp_path, {"colors": {"text": "#fafafa", "accent": "#ff000080", "caption_box": "#00000099"},
                                         "cards": {"accent_bar_height": 12},
-                                        "caption": {"box": True, "border_width": 0}}))
+                                        "caption": {"box": True, "border_width": 0, "box_padding": 16,
+                                                    "box_padding_x": 16, "fade": 0}}))
     draws = branding.card_draws(t, [("X", 50)], (640, 360), ["/x/a.txt"])
     assert "fontcolor=0xfafafa" in draws[0]
     assert draws[-1] == "drawbox=x=0:y=ih-12:w=iw:h=12:color=0xff000080:t=fill"
     cap = branding.caption_draw(t, "/x/c.txt", 0)
-    assert ":borderw" not in cap and "box=1:boxcolor=0x00000099:boxborderw=16:" in cap
+    assert ":borderw" not in cap and "box=1:boxcolor=0x00000099:boxborderw=16|16:" in cap
+    assert "alpha=" not in cap                            # fade 0 = hard cut
 
 
 @needs_ffmpeg

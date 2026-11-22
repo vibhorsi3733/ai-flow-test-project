@@ -12,6 +12,7 @@ import json
 import logging
 import re
 from dataclasses import dataclass, field
+from pathlib import Path
 
 from ..config import OversFilter
 from ..events import EventType, Source
@@ -329,11 +330,19 @@ def match_plan(clips: list[Clip], target: float, facts: MatchFacts, title: str,
         withheld.append(_withheld_entry(c, inn[c.event.id], reason))
 
     # The winning ball is one clip: a boundary with the same final score folds into WINNING RUNS.
+    # The label ("WINNING RUNS · FOUR") is decided when the clip is planned (clips.winning_label), BEFORE the
+    # caption is burned; here it is only added to a clip that has not been rendered yet, so the burned
+    # caption, the manifest and the .srt always agree.
     for me in [c for c in clips if c.event.type == EventType.MATCH_END]:
         same = [c for c in clips if c.event.type in BOUNDARY_ORDER and c.event.detail.get("score") == me.event.detail.get("score")]
         for b in same:
             label = "FOUR" if b.event.type == EventType.FOUR else "SIX"
-            me.caption = me.caption.replace("WINNING RUNS", f"WINNING RUNS · {label}", 1)
+            if "WINNING RUNS ·" not in strip_numbers(me.caption):
+                if me.path is not None and Path(me.path).exists():
+                    log.warning("WINNING RUNS clip already burned as %r; not adding '%s' (caption must match "
+                                "the video)", me.caption, label)
+                else:
+                    me.caption = me.caption.replace("WINNING RUNS", f"WINNING RUNS · {label}", 1)
             clips = [c for c in clips if c is not b]
             inn[b.event.id] = inn.get(b.event.id, 2)
             withheld.append({"id": b.event.id, "type": b.event.type.value, "match_time_s": round(b.event.t, 1),

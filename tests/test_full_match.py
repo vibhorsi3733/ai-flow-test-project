@@ -258,6 +258,55 @@ def test_run_out_call_after_a_confirm_belongs_to_the_next_wicket():
     assert "run_out" in by_score["179/6"].hold_reasons and by_score["179/6"].detail["call_t"] == 343.2
 
 
+def test_call_tied_with_the_previous_board_change_belongs_to_the_next_wicket():
+    """1080p demo: "Thane Strikers, this is gone" starts at 151.84, the same segment start as the 94/1 read that
+    is 94/2's prev_change_t. It must not become a commentary-only wicket (false wicket_missing hold)."""
+    f = Fuser(ocr_enabled=True, settle_seconds=30, ocr_lag_seconds=6)
+    for e in [_call(151.84, "Kulkarni. His input should be vital for the side. Thane Strikers, this is gone."),
+              _call(157.5, "Straight to hand and that's the wicket they were looking for."),
+              _w(181.1, "94/2", 151.84)]:
+        f.add(e)
+    wk = [e for e in f.finalize(10_000) if e.type == EventType.WICKET]
+    assert len(wk) == 1 and Source.OCR in wk[0].sources                 # no asr_only wicket left over
+    assert wk[0].detail["call_t"] == 157.5                               # anchor stays on the unambiguous call
+    assert any("this is gone" in q for q in wk[0].detail["quotes"])
+
+
+def test_tie_call_anchors_only_when_it_is_the_only_call():
+    f = Fuser(ocr_enabled=True, settle_seconds=30, ocr_lag_seconds=6)
+    for e in [_call(151.8, "Thane Strikers, this is gone."), _w(181.1, "94/2", 151.84)]:
+        f.add(e)
+    (w,) = [e for e in f.finalize(10_000) if e.type == EventType.WICKET]
+    assert w.detail["call_t"] == 151.8 and "no_call_anchor" not in w.hold_reasons
+    # one OCR frame (0.5 s at 2 fps) is the limit: a call clearly before the previous change is another ball
+    f = Fuser(ocr_enabled=True, settle_seconds=30, ocr_lag_seconds=6)
+    for e in [_call(150.0, "Thane Strikers, this is gone."), _w(181.1, "94/2", 151.84)]:
+        f.add(e)
+    wk = [e for e in f.finalize(10_000) if e.type == EventType.WICKET]
+    assert any(Source.OCR not in e.sources and e.t == 150.0 for e in wk)
+
+
+def test_manifest_score_is_the_dismissal_and_board_read_is_kept():
+    from motion_ai.fusion.fuser import dismissal_score
+    from motion_ai.highlights.renderer import manifest_score
+    gap = {"prev_score": "139/3", "prev_overs": "16.1", "score": "157/4", "overs": "18.0", "gap": True}
+    gap |= dismissal_score(gap)
+    assert manifest_score(gap) == {"score": "139/4", "overs": "16.2", "board_score": "157/4",
+                                   "board_overs": "18.0", "score_basis": "inferred_next_ball"}
+    caught = {"prev_score": "94/1", "prev_overs": "11.2", "score": "94/2", "overs": "11.3", "runs": 0,
+              "gap": False, "wickets": 1}
+    caught |= dismissal_score(caught)
+    m = manifest_score(caught)
+    assert (m["score"], m["overs"], m["board_score"], m["board_overs"]) == ("94/2", "11.3", "94/2", "11.3")
+    unknown = {"prev_score": "177/5", "prev_overs": "19.4", "score": "179/6", "overs": "19.5", "runs": 2,
+               "gap": False, "wickets": 1}
+    unknown |= dismissal_score(unknown)                                  # run-out off a wide: not inferable
+    m = manifest_score(unknown)
+    assert m["score"] is None and m["overs"] is None and m["board_score"] == "179/6"
+    assert manifest_score({"score": "99/2", "overs": "12.0"}) == {"score": "99/2", "overs": "12.0",
+                                                                 "board_score": "99/2", "board_overs": "12.0"}
+
+
 def test_winning_boundary_folds_into_one_winning_runs_clip():
     me = _clip(EventType.MATCH_END, 602.8, 10, 2, "181/5")
     me.caption = "WINNING RUNS · 181/5 (19.2 ov)"

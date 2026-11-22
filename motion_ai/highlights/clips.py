@@ -36,7 +36,25 @@ the scoreboard change confirming an event can come several balls after it):
     from the shot as before; end <= confirm - 0.04;
     caption at shot + 2.5 (161/4: shot 288.6, ball still running at 292). ASR-anchored boundary: caption at ref + 2.5 (6/0: call 56.8, rope 58.5-59.5).
   avoid_ranges (config/match.json, stream seconds): no frame inside one is used (SUBSCRIBE pop-up 494-497.5).
-  Caption: clamped into the clip, >= 1.5s before its end (177/5 had caption_t == clip end).
+  Caption: clamped into the clip, >= 3s before its end (CAPTION_MIN_S; fix round 2: 178/6 and the 177/5 six
+    showed 1.5s). Where the planned time is too late, the end moves out (boundaries) or the caption moves to
+    end - CAPTION_HOLD_S (wickets confirmed at the clip end).
+  Non-gap wicket with prev_change_t, no earlier call: the dismissal is the first ball(s) after the previous
+    change, so when [prev, end] fits the cap the clip starts at the previous change like a gap wicket
+    (178/6: change 339.42, wide bowled 341.5, run out at the bowler's end ~345, WICKET ticker 355, replay
+    356-361, board 362.06; the old start 345.83 opened on the umpire signalling the wide). Dead time is cut:
+    range 1 = [start, first cut in [start+7, start+10]] (live ball + outcome), range 2 = from the first cut in
+    [confirm-10, confirm-6] (OUT / replay) when the gap between them is >= 3s.
+  Wicket confirmed only by the INNINGS_END scorecard footer (no board change): the full-screen card fades in
+    INNINGS_CARD_LEAD_S before the footer read, so end <= innings_end_t - 3.3 (179/7: stumps broken 397.4,
+    card from 397.75, footer read 400.96).
+  OCR-only boundary on the first ball after the previous change: hit = min(crowd peak, prev + 1.5) (a later
+    peak is the celebration: winning runs peak 601.4, hit 595.0); caption at hit + 2.5 (four: ball reaches
+    the rope; winning runs rope ~597-598.5) or hit + 0.5 for a SIX (177/5: hit 582.5, in the stands 583.4);
+    the end moves out towards caption + 6s, never past the board change (the next ball cannot start
+    earlier), before a late cut (177/5: 589.3; roar rule alone ended it 587.56).
+  MATCH_END label: "WINNING RUNS · FOUR"/"· SIX" from the event's own runs (not a gap), decided here so the
+    burned caption, manifest and .srt agree (the curator fold ran after the burn).
 """
 from __future__ import annotations
 
@@ -153,7 +171,9 @@ def caption_for(ev: FusedEvent) -> str:
                 return label
             return f"{ordinal(n)} WICKET" if label == "WICKET" else f"{label} · {ordinal(n)} WICKET"
     elif ev.type in BOUNDARIES and d.get("gap"):
-        return label                                 # board jumped several balls: score not of this shot
+        return label
+    if ev.type == EventType.MATCH_END:
+        label = winning_label(d)                                 # board jumped several balls: score not of this shot
     score = d.get("event_score") or d.get("score")
     overs = d.get("event_overs") or d.get("overs")
     if not score:
@@ -161,6 +181,18 @@ def caption_for(ev: FusedEvent) -> str:
     if not CAPTION_SHOW_SCORE:
         return label
     return f"{label} · {score} ({overs} ov)" if overs else f"{label} · {score}"
+
+
+WINNING_SHOT = {4: "FOUR", 6: "SIX"}
+
+
+def winning_label(d: dict) -> str:
+    """'WINNING RUNS · FOUR' when the winning board change was one boundary ball (not a gap), else 'WINNING RUNS'."""
+    try:
+        shot = None if d.get("gap") else WINNING_SHOT.get(int(d.get("runs")))
+    except (TypeError, ValueError):
+        shot = None
+    return f"WINNING RUNS · {shot}" if shot else "WINNING RUNS"
 
 
 def ordinal(n: int) -> str:
@@ -210,7 +242,14 @@ BOARD_NEXT_BALL_S = 0.12  # end this long before a board change that is followed
 UNKNOWN_SCORE_TAIL_S = 0.24
 SHOT_LO, SHOT_HI = 16.0, 6.0   # OCR-only boundary: shot is the crowd peak in [confirm-16, confirm-6]
 ASR_CAPTION_S = 2.5      # boundary call -> ball reaches the rope (6/0: call 56.8, rope 58.5-59.5)
-CAPTION_TAIL_S = 1.5     # caption visible at least this long
+CAPTION_MIN_S = 3.0      # every caption is on screen at least this long inside the clip
+CAPTION_TAIL_S = CAPTION_MIN_S   # (old name)
+CAPTION_HOLD_S = 4.0     # preferred hold when a caption has to move back from the clip end
+CAPTION_PREF_S = 6.0     # boundary on the first ball after a change: tail kept until caption + 6s (<= board change)
+LIVE_S = 7.0             # first ball after a change: run-up + delivery + live outcome (178/6: 339.4 -> run out ~345)
+SIX_CAPTION_S = 0.5      # hit -> ball in the stands (177/5: hit 582.5, stands 583.4)
+NEAR_PREV_HIT_S = 1.5    # first ball after a change is hit by prev + ~1.0-1.4 (161/4 288.6, 177/5 582.5, 181/5 595.0)
+INNINGS_CARD_LEAD_S = 3.3   # full-screen batting card fades in this long before its footer is read (397.75 / 400.96)
 FIRST_BALL_LEAD_S = 0.2   # no cut found: start this long before the change (earlier frames show the previous
                           # state: 139/4 at 265.9 still shows "116-3 14 / DECISION UPHELD", change 266.36)
 INNINGS_START_LEAD_S = 1.5   # ... unless the previous change is the (slow-confirmed) innings-start read
@@ -288,18 +327,47 @@ def _plan(ev: FusedEvent, cuts: list[float], loud: list[tuple[float, float]]):
             end = end_by_roar(loud, R, 7, cuts)
             if confirm is not None and d.get("score_basis") == "unknown":
                 end = min(end, round(confirm + UNKNOWN_SCORE_TAIL_S, 2))
-        if confirm is not None and (confirm - 10) - (call + RANGE1_TAIL_S) >= 3:
+            if confirm is None and d.get("innings_end_t") is not None:   # last ball: before the batting card
+                end = min(end, round(d["innings_end_t"] - INNINGS_CARD_LEAD_S, 2))
+                R = min(R, end - CAPTION_MIN_S)
+        runout = bool({"run_out", "review"} & set(ev.hold_reasons))
+        cap = CAP_RUNOUT if runout or gap else CAP_WICKET
+        start_limit = call - 8
+        prev = d.get("prev_change_t")
+        from_prev = None
+        if (not gap and prev is not None and confirm is not None
+                and (d.get("call_t") is None or d["call_t"] >= prev)):
+            in_win = [c for c in cuts if prev - GAP_SNAP_LO <= c <= prev + GAP_SNAP_HI]
+            from_prev = in_win[-1] if in_win else prev - _first_ball_lead(d)
+            if end - from_prev > cap:
+                from_prev = None
+        if from_prev is not None:   # the ball after the previous change (live) + OUT / replay before the board
+            ranges = [[from_prev, end]]
+            start_limit = from_prev
+            live = [c for c in cuts if from_prev + LIVE_S <= c <= from_prev + LIVE_S + 3]
+            live_end = round(live[0] - FRAME, 2) if live else round(from_prev + LIVE_S + 1, 2)
+            back = [c for c in cuts if confirm - 10 <= c <= confirm - 6]
+            r2 = back[0] if back else confirm - 10
+            if r2 - live_end >= 3:   # skip the dead time between (178/6: umpire signals the wide 348.8-353.6)
+                ranges = [[from_prev, live_end], [r2, end]]
+        elif confirm is not None and (confirm - 10) - (call + RANGE1_TAIL_S) >= 3:
             ranges = [[start, call + RANGE1_TAIL_S], [confirm - 10, end]]
         else:
             ranges = [[start, end]]
-        runout = bool({"run_out", "review"} & set(ev.hold_reasons))
-        cap = CAP_RUNOUT if runout or gap else CAP_WICKET
         if gap:   # caption on the dismissal card / replay, not on a board change that is off screen
             caption_t = ranges[1][0] + 0.1 if len(ranges) == 2 else call + 1.5
             R = min(R, end - 3)
         else:
             caption_t = confirm if confirm is not None else call
-        start_limit = call - 8
+            out = _trim(ev, ranges, cap, R, start_limit)
+            end = out[-1][1]
+            if caption_t > end - CAPTION_MIN_S + 1e-6:   # confirmed at the very end: hold it on the replay
+                caption_t = max(out[0][0], end - (CAPTION_HOLD_S if confirm is not None else CAPTION_MIN_S))
+            elif confirm is None and d.get("innings_end_t") is not None:
+                # last ball, cut before the batting card: as close to the stumps breaking as 3s allows
+                # (179/7: call 394.2, stumps 397.4, end 397.66 -> 394.66)
+                caption_t = max(caption_t, end - CAPTION_MIN_S)
+            return out, caption_t
     elif ev.type in BOUNDARIES:
         confirm = d.get("confirm_t")
         R = ev.t
@@ -316,7 +384,10 @@ def _plan(ev: FusedEvent, cuts: list[float], loud: list[tuple[float, float]]):
                 d["shot_t"] = round(shot, 2)
         else:
             ref = ev.t
-        caption_t = ref + ASR_CAPTION_S
+        if near_prev:   # the boundary ball follows the change; a later crowd peak is the celebration
+            ref = min(ref, prev + NEAR_PREV_HIT_S)
+            d["hit_t"] = round(ref, 2)
+        caption_t = ref + (SIX_CAPTION_S if near_prev and ev.type == EventType.SIX else ASR_CAPTION_S)
         if near_prev:
             in_win = [c for c in cuts if prev - GAP_SNAP_LO <= c <= prev + GAP_SNAP_HI]
             start = in_win[-1] if in_win else prev - _first_ball_lead(d)
@@ -330,6 +401,11 @@ def _plan(ev: FusedEvent, cuts: list[float], loud: list[tuple[float, float]]):
                 ev.hold("no_cut_snap")
             start_limit = ref - 5
         end = end_by_roar(loud, R, 8, cuts)
+        if near_prev:   # nothing new starts before the board change: give the caption CAPTION_PREF_S if it can
+            want = round(min(confirm - FRAME, caption_t + CAPTION_PREF_S), 2)
+            if want > end:
+                late = [c for c in cuts if want - 2 <= c <= want and c - caption_t >= CAPTION_HOLD_S]
+                end = round(late[0] - FRAME, 2) if late else want
         if ocr_only:
             end = min(end, round(confirm - FRAME, 2))   # 161/4: the next ball starts at the change (300.2)
             R = min(R, confirm - SHOT_HI)
@@ -398,7 +474,10 @@ def _plan_gap_wicket(ev: FusedEvent, cuts: list[float], loud: list[tuple[float, 
         ranges = [(confirm - 16, confirm + 4)]
     else:
         ev.detail["gap_anchor_t"] = round(anchor, 2)
-        ranges = [(start, min(confirm + 4, start + CAP_WICKET))]
+        end = min(confirm + 4, start + CAP_WICKET)
+        if end < confirm + CAPTION_MIN_S:   # caption (at the board change) >= 3s, within the gap cap
+            end = min(confirm + CAPTION_MIN_S, start + GAP_CAP)
+        ranges = [(start, end)]
     ev.hold("no_call_anchor")
     return [(round(a, 2), round(b, 2)) for a, b in ranges], confirm
 
