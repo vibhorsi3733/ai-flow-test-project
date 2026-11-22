@@ -16,7 +16,7 @@ from dataclasses import dataclass, field
 from ..config import OversFilter
 from ..events import EventType, Source
 from ..llm import LLM
-from .clips import Clip, caption_for
+from .clips import Clip, caption_for, strip_numbers
 
 log = logging.getLogger(__name__)
 
@@ -49,8 +49,8 @@ of the powerplay), choose and caption the clips for a highlights package.
 - Total duration must stay within the target. Always keep the toss and every wicket.
 - Prefer sixes, reviews and dropped catches over fours; skip clips marked needs_review unless they
   clearly add to the story.
-- Captions: short on-screen text in English, max 8 words, e.g. "SIX! Rohit clears long-on".
-  Use only facts given in the clip data; never invent players or scores.
+- Captions: the event label only, in capitals, e.g. "SIX", "FOUR", "WICKET", "WINNING RUNS · FOUR".
+  No numbers (no score, overs or ordinals) and no player or team names.
 - Title: one punchy line summarising the powerplay."""
 
 
@@ -133,7 +133,11 @@ def split_by_overs(clips: list[Clip], flt: OversFilter | None, innings: dict[str
 
 
 def default_caption(c: Clip) -> str:
-    return c.caption or caption_for(c.event)
+    """Final on-screen caption: the clip's fact-based label, number-free unless CAPTION_SHOW_SCORE.
+
+    Enforced here so nothing upstream (LLM output, a rebuilt manifest, the WINNING RUNS fold) can put a
+    score back on screen."""
+    return strip_numbers(c.caption) or strip_numbers(caption_for(c.event))
 
 
 def _must_keep(c: Clip) -> bool:

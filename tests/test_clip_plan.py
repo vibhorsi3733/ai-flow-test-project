@@ -31,7 +31,7 @@ def test_caption_direct_hit_and_offset_at_confirmation():
     ev = runout_event()
     ranges, cap_t = plan_ranges(ev, DEMO_CUTS, flat(101, 110))
     clip = Clip(ev, ranges, None, caption_for(ev), cap_t)
-    assert clip.caption == "RUN OUT · DIRECT HIT · 6/1 (0.5 ov)"
+    assert clip.caption == "RUN OUT · DIRECT HIT"
     assert abs(clip.offset_of(101) - (12.0 + 10.0)) < 0.01    # appears at the OUT, not before
 
 
@@ -46,7 +46,7 @@ def test_boundary_starts_on_earliest_cut_and_respects_cap():
     ranges, cap_t = plan_ranges(ev, DEMO_CUTS, flat(56.8, 66))
     (a, b), = ranges
     assert a == 51.48 and b - a <= 15 and cap_t == 59.3   # call 56.8 + 2.5: ball reaches the rope 58.5-59.5
-    assert caption_for(ev) == "FOUR · 6/0 (0.3 ov)"
+    assert caption_for(ev) == "FOUR"
 
 
 def test_end_needs_one_full_second_of_quiet():

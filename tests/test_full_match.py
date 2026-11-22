@@ -264,7 +264,7 @@ def test_winning_boundary_folds_into_one_winning_runs_clip():
     four = _clip(EventType.FOUR, 608.8, 7, 2, "181/5")
     mp = match_plan([me, four], 300, _facts([me, four], result="181/5"), "t")
     assert [c.event.id for c, _ in mp.plan.items] == [me.event.id]
-    assert mp.plan.items[0][1] == "WINNING RUNS · FOUR · 181/5 (19.2 ov)"
+    assert mp.plan.items[0][1] == "WINNING RUNS · FOUR"
     assert any(w["reason"] == "same_ball_as_winning_runs" for w in mp.withheld)
 
 

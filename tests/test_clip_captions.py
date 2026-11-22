@@ -4,8 +4,10 @@ import json
 
 from motion_ai.events import Event, EventType, FusedEvent, Source
 from motion_ai.fusion.fuser import Fuser, dismissal_score, next_ball
+from motion_ai.highlights import clips as clips_mod
 from motion_ai.highlights.clips import (Clip, apply_avoid, caption_for, clamp_caption, load_avoid_ranges,
-                                        plan_ranges)
+                                        plan_ranges, strip_numbers)
+from motion_ai.highlights.curator import default_caption
 
 AVOID = [(494.0, 497.5)]   # YouTube SUBSCRIBE pop-up burned into the source
 
@@ -40,27 +42,27 @@ def test_next_ball_handles_over_end():
     assert next_ball("19.2") == "19.3" and next_ball(None) is None
 
 
-def test_gap_wicket_captions_match_ground_truth():
-    cases = [  # board after the gap, previous board, expected caption (report fixes 4, 5, 7, 9-13)
-        ("69/1", "7.4", "31/0", "2.4", "WICKET · 31/1 (2.5 ov)"),
-        ("112/2", "12.2", "104/1", "11.2", "WICKET · 104/2 (11.3 ov)"),
-        ("127/3", "14.2", "112/2", "12.2", "WICKET · 112/3 (12.3 ov)"),
-        ("155/4", "17.4", "127/3", "14.2", "WICKET · 127/4 (14.3 ov)"),
-        ("171/5", "18.5", "155/4", "17.4", "WICKET · 155/5 (17.5 ov)"),
-        ("157/4", "18.0", "139/3", "16.1", "WICKET · 139/4 (16.2 ov)"),
-        ("177/5", "19.4", "177/4", "19.2", "WICKET · 177/5 (19.3 ov)"),
+def test_gap_wicket_captions_have_no_score_but_data_keeps_it():
+    cases = [  # board after the gap, previous board, score AT the dismissal (report fixes 4, 5, 7, 9-13)
+        ("69/1", "7.4", "31/0", "2.4", "31/1"),
+        ("112/2", "12.2", "104/1", "11.2", "104/2"),
+        ("127/3", "14.2", "112/2", "12.2", "112/3"),
+        ("155/4", "17.4", "127/3", "14.2", "127/4"),
+        ("171/5", "18.5", "155/4", "17.4", "155/5"),
+        ("157/4", "18.0", "139/3", "16.1", "139/4"),
+        ("177/5", "19.4", "177/4", "19.2", "177/5"),
     ]
-    for score, overs, ps, po, want in cases:
+    for score, overs, ps, po, event_score in cases:
         ev = gap_wicket(500, 480, score, overs, ps, po)
-        assert caption_for(ev) == want
+        assert caption_for(ev) == "WICKET"
         assert "score_inferred" in ev.hold_reasons
-        assert ev.detail["event_score"] == want.split(" · ")[1].split(" ")[0]
+        assert ev.detail["event_score"] == event_score      # manifest data unchanged
 
 
 def test_gap_run_out_keeps_commentary_label():
     ev = gap_wicket(234.42, 186.02, "116/3", "14.0", "99/2", "12.0", call_t=191.24,
                     quotes=["That's a quick single, that's a direct hit as well."], holds=("run_out", "review"))
-    assert caption_for(ev) == "RUN OUT · DIRECT HIT · 99/3 (12.1 ov)"
+    assert caption_for(ev) == "RUN OUT · DIRECT HIT"
     assert ev.detail["event_overs"] == "12.1"
 
 
@@ -70,7 +72,7 @@ def test_run_out_off_a_wide_gets_a_safe_caption():
                     {"score": "179/6", "overs": "19.5", "runs": 2, "wickets": 1, "gap": False,
                      "prev_score": "177/5", "prev_overs": "19.4", "prev_change_t": 339.42, "confirm_t": 362.06,
                      "call_t": 343.24, "quotes": ["Surya runs, doesn't matter, Makran will be run out."]})
-    assert caption_for(ev) == "RUN OUT · 6th WICKET"
+    assert caption_for(ev) == "RUN OUT"
     assert "score_inferred" in ev.hold_reasons and "event_score" not in ev.detail
 
 
@@ -81,7 +83,7 @@ def test_one_delivery_wicket_trusts_the_board_and_old_events_fall_back():
     assert dismissal_score({"score": "69/1", "overs": "7.4", "gap": True, "wickets": 1}) == {
         "score_basis": "unknown", "event_wicket_no": 1}
     ev = FusedEvent(EventType.WICKET, 455, 0.95, {Source.OCR}, {"score": "69/1", "overs": "7.4", "gap": True})
-    assert caption_for(ev) == "1st WICKET"
+    assert caption_for(ev) == "WICKET"
 
 
 def test_gap_boundary_has_no_score():
@@ -221,9 +223,9 @@ def test_gap_wickets_get_their_own_calls():
     f.add(_e(362.06, EventType.WICKET, Source.OCR, score="179/6", overs="19.5", runs=2, gap=False,
              prev_change_t=339.42, prev_score="177/5", prev_overs="19.4", wickets=1, innings=1))
     out = {e.detail["score"]: e for e in f.finalize(1000) if e.type == EventType.WICKET}
-    assert out["116/3"].detail["call_t"] == 191.24 and caption_for(out["116/3"]) == "RUN OUT · DIRECT HIT · 99/3 (12.1 ov)"
-    assert out["177/5"].detail["call_t"] is None and caption_for(out["177/5"]) == "WICKET · 177/5 (19.3 ov)"
-    assert out["179/6"].detail["call_t"] == 343.24 and caption_for(out["179/6"]) == "RUN OUT · 6th WICKET"
+    assert out["116/3"].detail["call_t"] == 191.24 and caption_for(out["116/3"]) == "RUN OUT · DIRECT HIT"
+    assert out["177/5"].detail["call_t"] is None and caption_for(out["177/5"]) == "WICKET"
+    assert out["179/6"].detail["call_t"] == 343.24 and caption_for(out["179/6"]) == "RUN OUT"
     assert "run_out" not in out["177/5"].hold_reasons
 
 
@@ -236,3 +238,33 @@ def test_first_change_after_innings_start_is_flagged():
              prev_change_t=473.36, prev_score="104/1", prev_overs="11.2", wickets=1, innings=2))
     w = {e.detail["score"]: e for e in f.finalize(1000) if e.type == EventType.WICKET}
     assert w["69/1"].detail.get("prev_is_innings_start") and not w["112/2"].detail.get("prev_is_innings_start")
+
+
+# --- captions carry no numbers ----------------------------------------------------------------------------------
+def test_no_caption_contains_a_digit():
+    d = {"score": "69/1", "overs": "7.4", "gap": False, "prev_score": "68/0", "prev_overs": "7.3", "wickets": 1,
+         "innings": 2, "runs": 1}
+    evs = [FusedEvent(t, 100.0, 0.95, {Source.OCR}, dict(d)) for t in EventType]
+    evs.append(FusedEvent(EventType.TOSS, 1.0, 0.95, {Source.ASR},
+                          {"toss_winner": "Mumbai Indians", "toss_decision": "bowl"}))
+    evs += [gap_wicket(500, 480, "69/1", "7.4", "31/0", "2.4"),
+            FusedEvent(EventType.WICKET, 455, 0.95, {Source.OCR}, {"score": "69/1", "overs": "7.4", "gap": True}),
+            gap_wicket(234.42, 186.02, "116/3", "14.0", "99/2", "12.0", call_t=191.24, quotes=["direct hit"])]
+    for ev in evs:
+        cap = caption_for(ev)
+        assert cap and not any(ch.isdigit() for ch in cap), (ev.type, cap)
+        assert "Mumbai" not in cap
+
+
+def test_final_caption_strips_scores_from_any_source():
+    assert strip_numbers("WINNING RUNS · FOUR · 181/5 (19.2 ov)") == "WINNING RUNS · FOUR"
+    assert strip_numbers("RUN OUT · 6th WICKET") == "RUN OUT"
+    ev = FusedEvent(EventType.SIX, 100.0, 0.95, {Source.OCR}, {"score": "112/3", "overs": "12.3"})
+    assert default_caption(Clip(ev, [(90, 105)], None, "SIX · 112/3 (12.3 ov)", 100)) == "SIX"   # old manifest
+    assert default_caption(Clip(ev, [(90, 105)], None, "1st WICKET", 100)) == "SIX"              # nothing left
+
+
+def test_scores_can_be_turned_back_on(monkeypatch):
+    monkeypatch.setattr(clips_mod, "CAPTION_SHOW_SCORE", True)
+    ev = gap_wicket(500, 480, "69/1", "7.4", "31/0", "2.4")
+    assert caption_for(ev) == "WICKET · 31/1 (2.5 ov)"

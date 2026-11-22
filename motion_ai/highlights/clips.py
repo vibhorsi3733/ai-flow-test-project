@@ -108,6 +108,23 @@ class Clip:
         return max(0.0, off - 1.0)
 
 
+# On-screen captions carry NO numbers or data-derived names: OCR scores/overs were wrong too often
+# (e.g. "WICKET · 31/1 (2.5 ov)" over a 69/1 (7.4) board). Score/overs stay in the manifest as data.
+# Set True to bring "LABEL · score (overs ov)", ordinal wickets and the toss winner back on screen.
+CAPTION_SHOW_SCORE = False
+_DIGIT_WORD_RX = re.compile(r"\S*\d\S*")
+
+
+def strip_numbers(caption: str) -> str:
+    """Drop every " · " part that contains a digit (score, overs, ordinal), then any leftover digit word."""
+    if CAPTION_SHOW_SCORE:
+        return caption
+    parts = [p.strip() for p in caption.split("·")]
+    kept = [p for p in parts if p and not any(ch.isdigit() for ch in p)]
+    text = " · ".join(kept)
+    return " ".join(_DIGIT_WORD_RX.sub("", text).split())
+
+
 def caption_for(ev: FusedEvent) -> str:
     d = ev.detail
     quotes = " ".join(q or "" for q in d.get("quotes", []) + [d.get("quote", "")])
@@ -119,18 +136,20 @@ def caption_for(ev: FusedEvent) -> str:
         else:
             label = "WICKET"
     elif ev.type == EventType.TOSS and d.get("toss_winner"):
+        if not CAPTION_SHOW_SCORE:
+            return "TOSS"
         return f"{d['toss_winner']} win the toss, choose to {d.get('toss_decision') or 'play'}"
     else:
         label = {EventType.FOUR: "FOUR", EventType.SIX: "SIX", EventType.REVIEW: "REVIEW",
                  EventType.DROPPED_CATCH: "DROPPED",
-                 EventType.INNINGS_START: "2nd INNINGS" if d.get("innings", 1) >= 2 else "FIRST OVERS",
+                 EventType.INNINGS_START: "SECOND INNINGS" if d.get("innings", 1) >= 2 else "FIRST OVERS",
                  EventType.EXCITEMENT: "BIG MOMENT", EventType.MILESTONE: "MILESTONE",
                  EventType.MATCH_END: "WINNING RUNS"}.get(ev.type, ev.type.value.upper())
     if ev.type == EventType.WICKET:
-        annotate_dismissal(ev)
+        annotate_dismissal(ev)                       # data side (event_score, holds) stays either way
         if d.get("score_basis") == "unknown":       # never print a score that may be wrong
             n = d.get("event_wicket_no")
-            if not n:
+            if not n or not CAPTION_SHOW_SCORE:
                 return label
             return f"{ordinal(n)} WICKET" if label == "WICKET" else f"{label} · {ordinal(n)} WICKET"
     elif ev.type in BOUNDARIES and d.get("gap"):
@@ -139,6 +158,8 @@ def caption_for(ev: FusedEvent) -> str:
     overs = d.get("event_overs") or d.get("overs")
     if not score:
         return "KEY MOMENT" if ev.needs_review else label
+    if not CAPTION_SHOW_SCORE:
+        return label
     return f"{label} · {score} ({overs} ov)" if overs else f"{label} · {score}"
 
 
