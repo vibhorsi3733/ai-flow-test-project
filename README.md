@@ -124,6 +124,28 @@ Positions: `top-left`, `top-right`, `bottom-left`, `bottom-right`, `top-center`,
 Note: the curator still budgets the package with its own card lengths (`CARD_SECONDS`), so keep
 `cards.seconds` close to them.
 
+## Approval
+
+```bash
+python -m motion_ai.approve output/<package>.json [--port 8765] [--clips-dir runtime_1080/clips]
+# then open http://127.0.0.1:8765/
+```
+
+A local review page (stdlib only, bound to 127.0.0.1) shows the package summary (status, holds,
+quality gate, wicket audit, time left until `approve_by`), every clip with a video player, caption,
+score/overs, sources and hold reasons, and the withheld clips (read-only). Enter your reviewer name,
+then Approve / Reject each clip (optional note) and the package.
+
+- Decisions go to `<package>.approvals.json` next to the manifest (who, when, decision, note per
+  clip and for the package, plus an append-only history). The manifest is never modified.
+- The package counts as approved only when the reviewer approved it, every held clip has a
+  decision, and every hard-blocker hold (`quality_gate_failed`, `wicket_missing`) is named in the
+  package note. The result (approved / rejected / auto-included clip ids, blockers) is stored as
+  `publish_decision` in the approvals file (`motion_ai.approve.compute_publish_decision`).
+- `publish_channel_allowed` stays false: this step only records approval; publishing is separate.
+- Only files the manifest references are served (package mp4 and each clip's `clip_file`, looked
+  up by clip id). If a clip file is missing, the page plays that clip's span of the package mp4.
+
 ## Tests
 
 ```bash
