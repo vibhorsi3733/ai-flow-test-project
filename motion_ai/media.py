@@ -477,14 +477,24 @@ async def render_clip(segments: list[Path], base: float, ranges: list[tuple[floa
     return out
 
 
-async def concat_clips(clips: list[Path], out: Path) -> Path:
+async def concat_clips(clips: list[Path], out: Path, audio_rate: int | None = None) -> Path:
+    """Join the clips. Video is stream-copied (no re-encode, quality gate unaffected). Audio is decoded once
+    across the joins, run through the true-peak limiter and encoded once: AAC frames are overlap-added with
+    their neighbours, so a -c copy join can decode +1.5 dB hotter than the clip did alone (measured: a clip at
+    -2.3 dBTP read -0.8 dBTP inside the package, the package +1.0 dBTP). One package-level limiter pass keeps
+    the delivered file <= TRUE_PEAK_DBTP."""
     out.parent.mkdir(parents=True, exist_ok=True)
     lst = out.with_suffix(".txt")
     lst.write_text("".join(f"file '{p.resolve()}'\n" for p in clips))
-    await _run([
-        "ffmpeg", "-hide_banner", "-loglevel", "error", "-y",
-        "-f", "concat", "-safe", "0", "-i", str(lst), "-c", "copy",
-        "-movflags", "+faststart", str(out),
-    ])
-    lst.unlink(missing_ok=True)
+    rate = audio_rate or await source_audio_rate(clips[0] if clips else None)
+    try:
+        await _run([
+            "ffmpeg", "-hide_banner", "-loglevel", "error", "-y",
+            "-f", "concat", "-safe", "0", "-i", str(lst),
+            "-map", "0:v", "-map", "0:a", "-c:v", "copy",
+            "-af", peak_limiter(rate), *audio_opts(rate),
+            "-movflags", "+faststart", str(out),
+        ])
+    finally:
+        lst.unlink(missing_ok=True)
     return out

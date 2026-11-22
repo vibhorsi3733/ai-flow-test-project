@@ -150,3 +150,20 @@ def test_caption_off_by_default_burns_nothing(monkeypatch, tmp_path):
                                   audio_rate=48000, template=branding.Template(branding.DEFAULTS)))
     graph = cmds[0][cmds[0].index("-filter_complex") + 1]
     assert "drawtext" not in graph
+
+
+def test_package_join_copies_video_and_limits_audio_once(monkeypatch, tmp_path):
+    """The join stream-copies video (quality gate unaffected) and limits audio across joins: AAC overlap-add
+    made a -2.3 dBTP clip read -0.8 dBTP inside a -c copy package (package +1.0 dBTP)."""
+    cmds = []
+
+    async def fake_run(cmd):
+        cmds.append(cmd)
+        return b""
+
+    monkeypatch.setattr(media, "_run", fake_run)
+    asyncio.run(media.concat_clips([tmp_path / "a.mp4", tmp_path / "b.mp4"], tmp_path / "pkg.mp4", audio_rate=44100))
+    cmd = cmds[0]
+    assert cmd[cmd.index("-c:v") + 1] == "copy"
+    assert cmd[cmd.index("-af") + 1] == media.peak_limiter(44100)
+    assert "-c" not in cmd   # no blanket stream copy of the audio
