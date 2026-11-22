@@ -11,3 +11,4 @@ demo/
 .venv/
 eval/results/
 .claude/worktrees/
+config/template.json

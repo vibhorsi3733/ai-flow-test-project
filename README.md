@@ -101,6 +101,29 @@ python -m motion_ai.redetect ocr --apply # ...and swap its events into events.js
 over_cap), `approve_by`, `on_timeout_result` and `publish_channel_allowed: false` (until the IPL
 template and approve step exist). Held clips are never dropped and never auto-published.
 
+## Branding template
+
+Card and caption styling (colours, font, font sizes, logo, card lengths, caption box/position, safe margins)
+comes from `config/template.json` if it exists, else from `config/template.example.json` — a neutral
+placeholder that reproduces the built-in look exactly. Every key is optional; a missing key keeps the default.
+The template is validated at load (bad colour, unknown key, missing font/logo file -> a clear `TemplateError`).
+Caption *text* is not part of the template, only its styling.
+
+To brand the package, copy the example to `config/template.json` (git-ignored) and drop in the licensed files,
+e.g. under `config/brand/` (relative paths are resolved against `config/`):
+
+| File | Key | Notes |
+|---|---|---|
+| Logo, PNG with alpha (transparent background) | `logo.file` | Shown on every card (`logo.card`: position / width px / opacity); optional small corner bug on clips via `logo.clip_bug.enabled` |
+| Font, `.ttf` or `.otf` | `font.file` | `null` = DejaVu Sans Bold; sizes per role in `font.sizes` (`headline`, `subhead`, `stat`, `body`, `small`, `caption`) |
+| Colours | `colors.*` | `#rrggbb` or `#rrggbbaa` (or a basic name like `white`): `background`, `accent` (card bar, drawn when `cards.accent_bar_height` > 0), `text`, `caption_text`, `caption_border`, `caption_box` |
+
+Other keys: `cards.seconds` (per card), `cards.line_spacing`, `cards.fade`, `caption.y` (fraction of frame
+height), `caption.border_width`, `caption.box` / `caption.box_padding`, `safe_margins.x/y` (px, logo inset).
+Positions: `top-left`, `top-right`, `bottom-left`, `bottom-right`, `top-center`, `bottom-center`.
+Note: the curator still budgets the package with its own card lengths (`CARD_SECONDS`), so keep
+`cards.seconds` close to them.
+
 ## Tests
 
 ```bash

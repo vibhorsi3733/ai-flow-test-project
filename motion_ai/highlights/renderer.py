@@ -11,6 +11,7 @@ import time
 from pathlib import Path
 from typing import Callable
 
+from ..branding import active_template
 from ..events import EventType
 from ..media import concat_clips
 from .curator import Plan
@@ -84,28 +85,31 @@ async def render(plan: Plan, out_dir: Path, extra: dict | None = None) -> Path |
 
 # ---------------------------------------------------------------------------------------------------------
 # Full-match package: cards + both innings (fm/guidance_v1 §3). Cards carry a soft crowd bed from the feed.
-def card_texts(facts, match: dict) -> dict[str, list[tuple[str, int]] | None]:
-    """Card lines. A number appears only when it comes from a confirmed read (never guessed)."""
+def card_texts(facts, match: dict, sizes: dict[str, int] | None = None) -> dict[str, list[tuple[str, int]] | None]:
+    """Card lines. A number appears only when it comes from a confirmed read (never guessed).
+    `sizes`: font sizes by role (default: the branding template's font.sizes)."""
+    sz = sizes or active_template().sizes
+    H, SUB, STAT, BODY, SMALL = sz["headline"], sz["subhead"], sz["stat"], sz["body"], sz["small"]
     teams = list((match.get("teams") or {}).keys())
     first = match.get("batting_first") or (teams[0] if teams else "1st innings")
     second = next((t for t in teams if t != first), "2nd innings")
     vs = f"{first.upper()} v {second.upper()}" if teams else (match.get("match") or "MATCH").upper()
     cards: dict[str, list[tuple[str, int]] | None] = {
-        "title": [(vs, 64), ("MATCH HIGHLIGHTS", 96)],
-        "innings1": [("1st INNINGS", 96), (first.upper(), 64)],
-        "break": [("INNINGS BREAK", 96)],
-        "innings2": [("2nd INNINGS", 96), (second.upper(), 64)],
+        "title": [(vs, BODY), ("MATCH HIGHLIGHTS", H)],
+        "innings1": [("1st INNINGS", H), (first.upper(), BODY)],
+        "break": [("INNINGS BREAK", H)],
+        "innings2": [("2nd INNINGS", H), (second.upper(), BODY)],
         "result": None,
-        "outro": [("MATCH HIGHLIGHTS", 64), (vs, 48)],
+        "outro": [("MATCH HIGHLIGHTS", BODY), (vs, SMALL)],
     }
     if facts.target_matches_innings1:   # TARGET read confirms the first-innings total (target - 1)
-        cards["break"].append((f"{first.upper()}  {facts.innings1_runs}", 72))
-        cards["innings2"].append((f"TARGET {facts.target}", 72))
+        cards["break"].append((f"{first.upper()}  {facts.innings1_runs}", STAT))
+        cards["innings2"].append((f"TARGET {facts.target}", STAT))
     elif facts.target is not None:
-        cards["innings2"].append((f"TARGET {facts.target}", 72))
+        cards["innings2"].append((f"TARGET {facts.target}", STAT))
     if facts.result_score is not None:
         r, w = facts.result_score
-        cards["result"] = [(f"{second.upper()} WIN", 96), (f"BY {10 - w} WICKETS", 80), (f"{r}/{w}", 64)]
+        cards["result"] = [(f"{second.upper()} WIN", H), (f"BY {10 - w} WICKETS", SUB), (f"{r}/{w}", BODY)]
     return cards
 
 
@@ -157,7 +161,9 @@ async def render_match(mp, facts, match: dict, out_dir: Path, work_dir: Path, en
         return None
     stamp = time.strftime("%Y%m%d_%H%M%S")
     video = out_dir / f"match_highlights_{stamp}.mp4"
-    texts = card_texts(facts, match)
+    tpl = active_template()
+    seconds = {**CARD_SECONDS, **tpl.card_seconds}   # card lengths from the branding template
+    texts = card_texts(facts, match, tpl.sizes)
     card_dir = work_dir / "cards"
 
     inn1 = [(c, cap) for c, cap in plan.items if mp.innings.get(c.event.id, 1) == 1]
@@ -169,16 +175,16 @@ async def render_match(mp, facts, match: dict, out_dir: Path, work_dir: Path, en
     layout = [x for x in layout + ["outro"] if not isinstance(x, str) or texts.get(x)]
     buffered = covering(float("-inf"), float("inf")) if covering else []
     spans = [x if isinstance(x, str) else (x[0].t0, x[0].t1) for x in layout]
-    bed_at = crowd_windows(spans, CARD_SECONDS, (buffered[0].start, buffered[-1].end)) if buffered else {}
+    bed_at = crowd_windows(spans, seconds, (buffered[0].start, buffered[-1].end)) if buffered else {}
 
     async def card(name: str):
-        lines, sec = texts[name], CARD_SECONDS[name]
+        lines, sec = texts[name], seconds[name]
         path = card_dir / f"{name}.mp4"
         crowd = None
         if name in bed_at:
             segs = covering(bed_at[name], bed_at[name] + sec)
             crowd = ([s.path for s in segs], segs[0].start, bed_at[name]) if segs else None
-        await render_card(lines, sec, path, size, fps, encoder, crowd, audio_rate)
+        await render_card(lines, sec, path, size, fps, encoder, crowd, audio_rate, tpl)
         return {"name": name, "path": path, "duration": sec, "text": " / ".join(t for t, _ in lines),
                 "crowd_bed_t": bed_at.get(name)}
 
