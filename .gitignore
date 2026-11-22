@@ -12,3 +12,5 @@ demo/
 eval/results/
 .claude/worktrees/
 config/template.json
+.venv-ocr/
+config/scoreboard.proposed.json

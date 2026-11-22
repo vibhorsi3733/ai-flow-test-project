@@ -261,9 +261,14 @@ def _plan(ev: FusedEvent, cuts: list[float], loud: list[tuple[float, float]]):
     d = ev.detail
     if ev.type == EventType.WICKET:
         annotate_dismissal(ev)
+    if _is_gap_wicket(ev) and d.get("prev_change_t") is not None and (
+            d.get("call_t") is None or not ({"run_out", "review"} & set(ev.hold_reasons))):
+        # Gap wicket: the live dismissal follows the previous board change. A commentary call here is
+        # usually spoken over the replay (104/2: catch 475-481, call 493.4; 31/1: catch 432-439, call
+        # 444.7), so it must not move the clip — it only decides the label. Run-outs / reviews keep the
+        # call branch: their decision (big-screen OUT) comes ~10 s before the board change (116/3).
+        return _plan_gap_wicket_prev(ev, cuts, loud)
     if _is_gap_wicket(ev) and d.get("call_t") is None:
-        if d.get("prev_change_t") is not None:
-            return _plan_gap_wicket_prev(ev, cuts, loud)
         return _plan_gap_wicket(ev, cuts, loud)
     floor = _prev_floor(d)
     if ev.type in WICKETISH:

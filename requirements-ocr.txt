@@ -1,4 +1,11 @@
-# Only needed when OCR_AVAILABLE=true
-paddlepaddle-gpu>=2.6     # or `paddlepaddle` for CPU
-paddleocr>=2.7,<3
-opencv-python-headless>=4.9
+# Only needed when OCR_AVAILABLE=true. Install into a SEPARATE venv (.venv-ocr, see README "Scoreboard calibration"):
+# paddlepaddle 2.6 / paddleocr 2.x need numpy<2, and albumentations>1.4.10 / newer albucore break paddleocr 2.x imports.
+-r requirements.txt
+numpy<2
+paddlepaddle==2.6.2       # CPU; on a CUDA box use paddlepaddle-gpu==2.6.2 instead
+paddleocr<3
+albumentations==1.4.10
+albucore==0.0.12
+setuptools<70             # paddle imports setuptools at startup; uv venvs ship without it
+pytest
+# opencv comes with paddleocr. System dependency: ffmpeg on PATH.

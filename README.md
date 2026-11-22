@@ -151,3 +151,36 @@ then Approve / Reject each clip (optional note) and the package.
 ```bash
 pytest tests
 ```
+
+## Scoreboard calibration
+
+OCR runs in its own venv (PaddleOCR 2.x needs numpy<2; the main `.venv` stays on numpy 2.x):
+
+```bash
+uv venv --python 3.10 .venv-ocr
+uv pip install --python .venv-ocr/bin/python -r requirements-ocr.txt   # ffmpeg must be on PATH
+```
+
+`config/scoreboard.json` holds pixel boxes for one broadcaster's graphics. For a new broadcaster / video,
+propose them automatically:
+
+```bash
+.venv-ocr/bin/python -m motion_ai.calibrate path/to/match.mp4                    # 5 middle frames (9, 17 if needed)
+.venv-ocr/bin/python -m motion_ai.calibrate path/to/match.mp4 --at 100 470 400   # frames you picked
+#   --out config/scoreboard.proposed.json (default)  --gpu  --preview-dir runtime/calibration
+```
+
+It runs PaddleOCR detection over the bottom 25% of each frame (native resolution), finds the score bar
+(`73-1` + overs, merged across neighbouring boxes; the most-seen, tallest-text cluster wins over e.g. bowler
+figures), `TARGET n` next to it, the `OVERS x TOTAL r-w` card footer and a second score-bar position
+(`scoreline_alt`), pads the union of the boxes seen across frames, and writes them in the
+`config/scoreboard.json` format. `scoreline` must be seen on >= 2 frames; `target` / `footer` on >= 1.
+
+Then:
+
+1. Look at `runtime/calibration/<video>/` — `frame_*.png` (all OCR boxes grey, proposed regions coloured) and
+   `region_*.png` (each crop as the detector sees it).
+2. Check the printed validation table (each region re-read with `ScoreboardOCRDetector` on every frame).
+3. `target` only shows in the chase and `footer` only on the scorecards after an innings: if they are missing,
+   re-run with `--at` times where they are on screen (also add a few score-bar times).
+4. Copy the proposal to `config/scoreboard.json` (edit boxes by hand if a preview is off).

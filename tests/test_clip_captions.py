@@ -268,3 +268,17 @@ def test_scores_can_be_turned_back_on(monkeypatch):
     monkeypatch.setattr(clips_mod, "CAPTION_SHOW_SCORE", True)
     ev = gap_wicket(500, 480, "69/1", "7.4", "31/0", "2.4")
     assert caption_for(ev) == "WICKET · 31/1 (2.5 ov)"
+
+
+def test_late_commentary_call_does_not_move_a_gap_wicket_clip():
+    """Claude calls are often spoken over the replay: 104/2 catch live 475-481 s, call 493.4 s.
+    The clip must still start at the previous board change (472.3 s), not after the catch."""
+    from motion_ai.events import EventType, FusedEvent, Source
+    from motion_ai.highlights.clips import plan_ranges
+    ev = FusedEvent(EventType.WICKET, 493.4, 0.75, {Source.OCR, Source.ASR},
+                    {"score": "112/2", "overs": "12.2", "gap": True, "innings": 2, "wickets": 1,
+                     "prev_score": "104/1", "prev_overs": "11.2", "prev_change_t": 473.36,
+                     "confirm_t": 502.52, "call_t": 493.4, "quotes": ["And holds out into the deep"]})
+    ranges, cap_t = plan_ranges(ev, [472.31, 481.84, 497.54], [])
+    assert ranges[0][0] <= 475.0 and ranges[-1][1] >= 481.0       # the live catch is inside the clip
+    assert ranges[0][0] <= cap_t <= ranges[-1][1]

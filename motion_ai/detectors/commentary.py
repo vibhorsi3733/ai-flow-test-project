@@ -149,7 +149,8 @@ class CommentaryDetector(Detector):
             return []
         transcript = "\n".join(f"[{i}] {ln.text}" for i, ln in enumerate(window))
         squads = "; ".join(f"{team}: {', '.join(p)}" for team, p in self.match.get("teams", {}).items())
-        result = await self.llm.json(SYSTEM, f"Squads: {squads}\n\nTranscript:\n{transcript}", SCHEMA)
+        result = await self.llm.json(SYSTEM, f"Squads: {squads}\n\nTranscript:\n{transcript}", SCHEMA,
+                                     stage="commentary")
         if result is None:
             return self._keyword_fallback(window)
 

@@ -136,7 +136,10 @@ class HighlightPipeline:
         self._finish_task.add_done_callback(_consume_error)
 
     def manifest_stats(self) -> dict:
-        return self.stats() | {"clip_failures": self.clip_failures}
+        out = self.stats() | {"clip_failures": self.clip_failures}
+        if hasattr(self.llm, "usage_summary"):   # measured Claude tokens/cost per stage (motion_ai.expense)
+            out["llm_usage"] = self.llm.usage_summary() | {"run": "live"}
+        return out
 
     async def _finish(self, t_end: float) -> None:
         try:

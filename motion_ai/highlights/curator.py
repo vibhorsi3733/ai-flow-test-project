@@ -200,7 +200,7 @@ async def curate(llm: LLM, clips: list[Clip], target: float, match: dict,
     } for c in clips]
     user = (f"Match: {match.get('match', 'IPL')}\nTarget duration: {int(target)}s\n"
             f"Candidates:\n{json.dumps(candidates, ensure_ascii=False, indent=1, default=str)}")
-    result = await llm.json(SYSTEM, user, SCHEMA)
+    result = await llm.json(SYSTEM, user, SCHEMA, stage="curator")
     if result is None:
         log.warning("Curator LLM unavailable; using rule-based plan")
         plan = rule_based_plan(clips, target, title, overs=None)

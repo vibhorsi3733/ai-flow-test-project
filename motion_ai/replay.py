@@ -4,6 +4,10 @@
     python -m motion_ai.replay               # full package render from cached segments
 
 Lets fusion/clip rules be changed and checked without re-running speech-to-text and OCR.
+
+Claude usage (manifest `llm_usage`): a replay re-runs only the curator call (powerplay scope; match scope has
+no LLM call at all). Commentary events come from the recording, so replay usage is NOT the live usage of the
+video; take per-video numbers from the live run's package.
 """
 from __future__ import annotations
 
@@ -38,6 +42,17 @@ def fuse_recorded(settings: Settings):
     return fused, clip_events, pp_end
 
 
+REPLAY_USAGE_NOTE = ("replay: commentary events were read from the recording (no commentary calls); "
+                     "only the curator call was re-run, so this is not the live per-video usage")
+
+
+def replay_usage(llm: LLM | None) -> dict:
+    """`llm_usage` for a replayed package, labelled so it is never mistaken for a live run."""
+    from .llm import summarize_usage
+    summary = llm.usage_summary() if llm is not None else summarize_usage([])
+    return summary | {"run": "replay", "note": REPLAY_USAGE_NOTE}
+
+
 async def replay(settings: Settings, plan_only: bool) -> None:
     buffer = SegmentBuffer()
     buffer.segments = load_segments(settings.work_dir)
@@ -64,13 +79,14 @@ async def replay(settings: Settings, plan_only: bool) -> None:
     settings.output_dir.mkdir(parents=True, exist_ok=True)
     if settings.match_scope:
         await build_match_package(clips, fused, settings, load_match(settings.match_config_path), buffer,
-                                  {"replayed": True})
+                                  {"replayed": True, "llm_usage": replay_usage(None)})
         return
     title = "Powerplay highlights" if pp_end is not None else "Match highlights"
-    plan = await curate(LLM(settings), clips, settings.highlight_target_seconds,
+    llm = LLM(settings)
+    plan = await curate(llm, clips, settings.highlight_target_seconds,
                         load_match(settings.match_config_path), title)
     settings.output_dir.mkdir(parents=True, exist_ok=True)
-    await render(plan, settings.output_dir, {"replayed": True})
+    await render(plan, settings.output_dir, {"replayed": True, "llm_usage": replay_usage(llm)})
 
 
 def main() -> None:
